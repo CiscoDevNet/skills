@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "aci",
+  "displayName": "Cisco Application Centric Infrastructure",
+  "description": "Agent Skills for Cisco ACI fabric, APIC, data center networking, and automation workflows.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Cisco DevNet",
+    "url": "https://developer.cisco.com/"
+  },
+  "homepage": "https://github.com/CiscoDevNet/skills/tree/main/skills/aci",
+  "repository": "https://github.com/CiscoDevNet/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "cisco",
+    "aci",
+    "apic",
+    "data-center",
+    "network-automation",
+    "agent-skills"
+  ]
+}

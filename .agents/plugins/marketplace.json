@@ -1,0 +1,125 @@
+{
+  "name": "cisco-skills",
+  "interface": {
+    "displayName": "Cisco Agent Skills"
+  },
+  "plugins": [
+    {
+      "name": "ios",
+      "source": {
+        "source": "local",
+        "path": "./plugins/ios"
+      },
+      "description": "Cisco IOS and IOS XE operational and configuration guidance.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_DEMAND"
+      },
+      "category": "Networking"
+    },
+    {
+      "name": "meraki",
+      "source": {
+        "source": "local",
+        "path": "./plugins/meraki"
+      },
+      "description": "Agent Skills for the Cisco Meraki platform.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_DEMAND"
+      },
+      "category": "Networking"
+    },
+    {
+      "name": "thousandeyes",
+      "source": {
+        "source": "local",
+        "path": "./plugins/thousandeyes"
+      },
+      "description": "Agent Skills for Cisco ThousandEyes.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_DEMAND"
+      },
+      "category": "Observability"
+    },
+    {
+      "name": "cml",
+      "source": {
+        "source": "local",
+        "path": "./plugins/cml"
+      },
+      "description": "Agent Skills for Cisco Modeling Labs.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_DEMAND"
+      },
+      "category": "Networking"
+    },
+    {
+      "name": "cloud-security",
+      "source": {
+        "source": "local",
+        "path": "./plugins/cloud-security"
+      },
+      "description": "Agent Skills for Cisco cloud security products and services.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_DEMAND"
+      },
+      "category": "Security"
+    },
+    {
+      "name": "ise",
+      "source": {
+        "source": "local",
+        "path": "./plugins/ise"
+      },
+      "description": "Agent Skills for Cisco Identity Services Engine.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_DEMAND"
+      },
+      "category": "Security"
+    },
+    {
+      "name": "aci",
+      "source": {
+        "source": "local",
+        "path": "./plugins/aci"
+      },
+      "description": "Agent Skills for Cisco Application Centric Infrastructure.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_DEMAND"
+      },
+      "category": "Data Center"
+    },
+    {
+      "name": "intersight",
+      "source": {
+        "source": "local",
+        "path": "./plugins/intersight"
+      },
+      "description": "Agent Skills for Cisco Intersight.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_DEMAND"
+      },
+      "category": "Infrastructure"
+    },
+    {
+      "name": "sccfm",
+      "source": {
+        "source": "local",
+        "path": "./plugins/sccfm"
+      },
+      "description": "Safely operate Cisco Security Cloud Control Firewall Manager through its CLI and Ansible collection.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Security"
+    }
+  ]
+}

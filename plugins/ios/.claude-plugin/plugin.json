@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "ios",
+  "displayName": "Cisco IOS and IOS XE",
+  "description": "Agent Skills for Cisco IOS and IOS XE configuration, operations, troubleshooting, and automation workflows.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Cisco DevNet",
+    "url": "https://developer.cisco.com/"
+  },
+  "homepage": "https://github.com/CiscoDevNet/skills/tree/main/skills/ios",
+  "repository": "https://github.com/CiscoDevNet/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "cisco",
+    "ios",
+    "ios-xe",
+    "networking",
+    "network-automation",
+    "agent-skills"
+  ]
+}

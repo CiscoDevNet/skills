@@ -1,5 +1,7 @@
 # Contributor Covenant Code of Conduct
 
+This Code of Conduct applies to the `skills` project and its community spaces.
+
 ## Our Pledge
 
 We as members, contributors, and leaders pledge to make participation in our

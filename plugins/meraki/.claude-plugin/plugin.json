@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "meraki",
+  "displayName": "Cisco Meraki",
+  "description": "Agent Skills for Cisco Meraki cloud-managed networking, automation, and API workflows.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Cisco DevNet",
+    "url": "https://developer.cisco.com/"
+  },
+  "homepage": "https://github.com/CiscoDevNet/skills/tree/main/skills/meraki",
+  "repository": "https://github.com/CiscoDevNet/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "cisco",
+    "meraki",
+    "dashboard-api",
+    "cloud-managed-networking",
+    "network-automation",
+    "agent-skills"
+  ]
+}

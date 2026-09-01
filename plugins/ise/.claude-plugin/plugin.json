@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "ise",
+  "displayName": "Cisco Identity Services Engine",
+  "description": "Agent Skills for Cisco Identity Services Engine identity, policy, network access control, and automation workflows.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Cisco DevNet",
+    "url": "https://developer.cisco.com/"
+  },
+  "homepage": "https://github.com/CiscoDevNet/skills/tree/main/skills/ise",
+  "repository": "https://github.com/CiscoDevNet/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "cisco",
+    "ise",
+    "identity-services-engine",
+    "network-access-control",
+    "policy",
+    "agent-skills"
+  ]
+}

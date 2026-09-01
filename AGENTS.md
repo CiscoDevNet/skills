@@ -1,58 +1,109 @@
-**AGENTS.md is a simple, open format for guiding AI agents that works with your repository.**
+# Agent guidance for Cisco Agent Skills
 
-> Edit the following template to provide users with a better experience when working with coding agents (VS Code, GitHub Copilot, Cursor, Codex, Gemini CLI, etc.).
+This repository contains portable Agent Skills, not a product SDK or a
+collection of paste-ready production configurations. Keep guidance grounded in
+current Cisco documentation and safe for operators to review before use.
 
-Provide the agent with information on which documentation and/or OpenAPI spec document to use.  
-For example, you can paste a direct link to the latest OpenAPI spec. 
-Direct link for Cisco Secure Access Authorization API:
-https://pubhub.devnetcloud.com/media/cloud-security-apis-in-eft/docs/secure-access/reference/auth/cisco_secure_access_token_authorization_api_2_0_0.yaml 
+## Repository model
 
-Add information about the MCP servers needed for the project.
+- Canonical portable content lives at `skills/<product>/<skill>/SKILL.md`.
+- Marketplace packages live at `plugins/<product>/skills/<skill>/SKILL.md`.
+- Canonical and packaged copies of a skill must remain byte-identical.
+- Every skill directory must contain `SKILL.md`; add `scripts/`, `references/`,
+  or `assets/` only when they contain material the skill actually uses.
+- Product and skill names use lowercase kebab-case. The frontmatter `name` must
+  exactly match the skill directory name.
+- Start new work from `template/skill-template/SKILL.md` and follow
+  `spec/authoring-guide.md`.
 
-You can add a link to the Cisco DevNet sandbox needed to work with the project. 
-Choose the direct link from the list here: https://devnetsandbox.cisco.com/DevNet
+## Authoritative documentation
 
-Additionally, you can provide information about the version and link to the SDK, Infrastructure as Code provider/module, etc., which is recommended for use by coding Agents.
+Prefer primary, current sources:
 
-Example of AGENTS.md file at Cisco DevNet GitHub org: [https://github.com/CiscoDevNet/python_code_samples_network/blob/master/AGENTS.md](https://github.com/CiscoDevNet/python_code_samples_network/blob/master/AGENTS.md)
+- Cisco documentation: https://www.cisco.com/c/en/us/support/index.html
+- Cisco developer documentation: https://developer.cisco.com/docs/
+- Cisco API catalog: https://developer.cisco.com/docs/apis/
+- Cisco DevNet Sandboxes: https://devnetsandbox.cisco.com/DevNet
+- Agent Skills specification: https://agentskills.io
+- Agent Skills reference implementation:
+  https://github.com/agentskills/agentskills
+- CoSAI Project CodeGuard:
+  https://github.com/cosai-oasis/project-codeguard
 
-Example of AGENTS.md file at The Apache Software Foundation org: [https://github.com/apache/airflow/blob/main/AGENTS.md](https://github.com/apache/airflow/blob/main/AGENTS.md)
+For Cisco Secure Access authorization examples, use the current published API
+specification:
 
-**How to test AGENTS.md?**
-* You can test it with your favorite coding agents (VS Code, GitHub Copilot, Cursor, Codex, Gemini CLI, etc.).
-* Clone the repository containing the updated AGENTS.md and request guidance, such as: `How do I run this project with the [specified parameters]?`
+https://pubhub.devnetcloud.com/media/cloud-security-apis-in-eft/docs/secure-access/reference/auth/cisco_secure_access_token_authorization_api_2_0_0.yaml
 
-# Template:
+Do not infer an endpoint, option, model identifier, or supported version when a
+schema, installed CLI help, SDK reference, or product documentation can verify
+it. Record source URLs and version constraints in the skill.
 
-## Dev environment tips
+## MCP and external tools
 
-- **Python version**: Use Python 3.9+.
-- **Virtual env (recommended)**:
-  ```bash
-  python3 -m venv .venv
-  source .venv/bin/activate
-  python -m pip install -U pip
-  ```
+MCP servers are optional unless a skill explicitly declares one as a
+prerequisite. Prefer official Cisco-hosted MCP servers and document:
 
-### Quick run examples
+1. the official endpoint and documentation;
+2. supported authentication flows;
+3. read-only versus mutating tool groups;
+4. rate limits and usage impact;
+5. a render/review step before editing client configuration.
 
+Never ask users to paste tokens, passwords, private keys, or session material
+into chat. Use hidden prompts, OS credential stores, or permission-restricted
+secret files. Do not commit generated client configuration containing secrets.
 
-## Testing instructions
+## Skill authoring rules
 
-- **MCP server links**
+- Write a specific third-person description containing both capability and
+  activation triggers.
+- Keep the main `SKILL.md` concise; move detailed material into directly linked
+  reference files.
+- Start operational workflows with read-only discovery and current-state
+  capture.
+- Treat generated device configuration as a candidate, not as approved
+  production configuration.
+- For changes, require exact targets, rollback steps, out-of-band access where
+  relevant, and before/after verification.
+- Do not save, commit, deploy, or apply a change merely because a command was
+  accepted.
+- Use placeholders such as `YOUR_ORG_ID` and `${TOKEN_FILE}`. Never include real
+  customer names, addresses, topology, credentials, or certificates.
+- Validate untrusted input and use structured process execution. Never build
+  shell commands by concatenating untrusted values.
+- If certificate files are referenced, require verification of validity dates,
+  key strength, signature algorithm, hostname/chain trust, and whether
+  self-signing is intentional.
 
-- **Test the code with the Cisco DevNet sandbox**
-  
-  Visit https://devnetsandbox.cisco.com/DevNet to book a related sandbox.
-  
-- **Latest Cisco API documentation**:
-  
-  https://developer.cisco.com/docs/
+## Validation
 
-## PR instructions
+Run from the repository root:
 
-- **Security**: Do not commit real credentials or tokens. Use placeholders and document required env vars or files.
+```bash
+python3 scripts/validate_skills.py
+python3 -m json.tool .claude-plugin/marketplace.json >/dev/null
+python3 -m json.tool .agents/plugins/marketplace.json >/dev/null
+```
 
-## Contribution conventions
+If Claude Code tooling is installed, also run:
 
-- **Backward compatibility**: Do not change existing sample behavior unless clearly improving or fixing a bug; document changes.
+```bash
+claude plugin validate .
+```
+
+For a product workflow, use a suitable
+[Cisco DevNet Sandbox](https://devnetsandbox.cisco.com/DevNet) when one exists.
+Do not test mutating instructions against production.
+
+## Pull requests
+
+- Keep one product or coherent workflow per pull request.
+- Explain source documentation, tested versions, validation performed, and any
+  live-testing gaps.
+- Update both canonical and plugin copies.
+- Preserve upstream attribution in `SOURCES.md`.
+- Do not commit credentials, tokens, generated customer data, local reference
+  repositories, or private topology.
+- Preserve backward compatibility unless fixing unsafe or incorrect guidance;
+  document behavior changes.

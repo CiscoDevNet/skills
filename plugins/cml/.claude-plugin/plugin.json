@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "cml",
+  "displayName": "Cisco Modeling Labs",
+  "description": "Agent Skills for Cisco Modeling Labs network simulation, lab automation, and topology workflows.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Cisco DevNet",
+    "url": "https://developer.cisco.com/"
+  },
+  "homepage": "https://github.com/CiscoDevNet/skills/tree/main/skills/cml",
+  "repository": "https://github.com/CiscoDevNet/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "cisco",
+    "cml",
+    "cisco-modeling-labs",
+    "network-simulation",
+    "lab-automation",
+    "agent-skills"
+  ]
+}

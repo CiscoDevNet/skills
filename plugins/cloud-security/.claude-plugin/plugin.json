@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "cloud-security",
+  "displayName": "Cisco Cloud Security",
+  "description": "Agent Skills for Cisco cloud security products, services, integrations, and operational workflows.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Cisco DevNet",
+    "url": "https://developer.cisco.com/"
+  },
+  "homepage": "https://github.com/CiscoDevNet/skills/tree/main/skills/cloud-security",
+  "repository": "https://github.com/CiscoDevNet/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "cisco",
+    "cloud-security",
+    "secure-access",
+    "security",
+    "zero-trust",
+    "agent-skills"
+  ]
+}

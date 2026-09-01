@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-marketplace.json",
+  "name": "cisco-skills",
+  "description": "Agent Skills for Cisco products, solutions, and technologies.",
+  "owner": {
+    "name": "Cisco DevNet",
+    "url": "https://github.com/CiscoDevNet"
+  },
+  "plugins": [
+    {
+      "name": "ios",
+      "source": "./plugins/ios",
+      "description": "Cisco IOS and IOS XE operational and configuration guidance.",
+      "category": "networking",
+      "keywords": ["cisco", "ios", "ios-xe", "networking"]
+    },
+    {
+      "name": "meraki",
+      "source": "./plugins/meraki",
+      "description": "Agent Skills for the Cisco Meraki platform.",
+      "category": "networking",
+      "keywords": ["cisco", "meraki", "networking"]
+    },
+    {
+      "name": "thousandeyes",
+      "source": "./plugins/thousandeyes",
+      "description": "Agent Skills for Cisco ThousandEyes.",
+      "category": "observability",
+      "keywords": ["cisco", "thousandeyes", "observability"]
+    },
+    {
+      "name": "cml",
+      "source": "./plugins/cml",
+      "description": "Agent Skills for Cisco Modeling Labs.",
+      "category": "networking",
+      "keywords": ["cisco", "cml", "network-simulation"]
+    },
+    {
+      "name": "cloud-security",
+      "source": "./plugins/cloud-security",
+      "description": "Agent Skills for Cisco cloud security products and services.",
+      "category": "security",
+      "keywords": ["cisco", "cloud-security", "secure-access"]
+    },
+    {
+      "name": "ise",
+      "source": "./plugins/ise",
+      "description": "Agent Skills for Cisco Identity Services Engine.",
+      "category": "security",
+      "keywords": ["cisco", "ise", "identity", "network-access-control"]
+    },
+    {
+      "name": "aci",
+      "source": "./plugins/aci",
+      "description": "Agent Skills for Cisco Application Centric Infrastructure.",
+      "category": "data-center",
+      "keywords": ["cisco", "aci", "apic", "data-center"]
+    },
+    {
+      "name": "intersight",
+      "source": "./plugins/intersight",
+      "description": "Agent Skills for Cisco Intersight.",
+      "category": "infrastructure",
+      "keywords": ["cisco", "intersight", "infrastructure"]
+    },
+    {
+      "name": "sccfm",
+      "source": "./plugins/sccfm",
+      "description": "Safely operate Cisco Security Cloud Control Firewall Manager through its CLI and Ansible collection.",
+      "category": "security",
+      "keywords": ["cisco", "sccfm", "firewall-manager", "ansible"]
+    }
+  ]
+}
