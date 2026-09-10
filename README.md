@@ -105,5 +105,5 @@ are recorded in [SOURCES.md](SOURCES.md).
 
 ## License
 
-Apache License 2.0. See [LICENSE](LICENSE). Third-party source attribution is
+Licensed under Apache 2.0. See [Apache License 2.0. LICENSE](LICENSE). Third-party source attribution is
 recorded in [SOURCES.md](SOURCES.md).
