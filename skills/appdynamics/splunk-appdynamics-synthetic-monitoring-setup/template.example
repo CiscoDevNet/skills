@@ -1,0 +1,15 @@
+controller_url: https://example.saas.appdynamics.com
+account_name: customer1
+synthetic_endpoint: https://synthetic.api.appdynamics.com
+browser_jobs:
+  - name: checkout-homepage
+    url: https://example.com
+api_monitors:
+  - name: checkout-api
+    url: https://example.com/health
+private_synthetic_agent:
+  enabled: true
+  # Defaults to the SaaS synthetic API host (matches the renderer default);
+  # override with your region-specific PSA Shepherd URL if it differs.
+  shepherd_url: https://synthetic.api.appdynamics.com
+  secret_name: appdynamics-synthetic-agent-secret
