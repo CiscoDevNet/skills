@@ -1,0 +1,239 @@
+---
+name: splunk-itsi-setup
+description: >
+  Use when the outcome is ITSI product/package installation, upgrade, license readiness, restart, core-app health, or installation validation; route post-install entities, services, KPIs, dependencies, Event Analytics configuration, and content-pack import to splunk-itsi-config. Install and validate Splunk IT Service Intelligence (ITSI) on Splunk Cloud or Splunk Enterprise.
+license: Apache-2.0
+compatibility: "Claude Code, GitHub Copilot, OpenAI Codex, Cursor, Gemini CLI"
+metadata:
+  product: splunk-itsi
+  maturity: draft
+---
+
+# Splunk ITSI Setup Automation
+
+## Prerequisites
+
+| Tool or access | Purpose | Verify |
+|---|---|---|
+| Bash and Python 3 | Run bundled setup and validation helpers | `bash --version && python3 --version` |
+| Required product/platform access | Inspect or configure the selected target | Complete the documented preflight |
+| Credential files for live modes | Keep secrets out of chat | Verify paths only |
+
+## Workflow Overview
+
+```text
+┌───────────┐   ┌───────────────┐   ┌───────────────┐   ┌─────────────────┐
+│ Preflight │ → │ Render/review │ → │ Apply/handoff │ → │ Validate evidence │
+└───────────┘   └───────────────┘   └───────────────┘   └─────────────────┘
+```
+
+## When to Activate
+
+- The outcome is ITSI product/package installation, upgrade, license readiness, restart, core-app health, or
+  installation validation; route post-install entities, services, KPIs, dependencies, Event Analytics configuration,
+  and content-pack.
+- Preview and review the splunk itsi setup workflow before any live apply phase.
+- Diagnose failed prerequisites, generated assets, configuration, or validation evidence.
+
+## Scope
+
+Follow the documented read-only or render-first path whenever it is available.
+This skill does not imply permission to mutate live systems. Require explicit
+apply flags, protected credentials, and operator review for state changes.
+
+## Examples
+
+Inspect the supported setup modes before selecting one:
+
+```bash
+bash source-repository automation (not bundled) --help
+```
+
+Expected output: usage, supported modes, and required arguments are displayed
+without changing the target environment.
+
+Inspect validation modes before running completion checks:
+
+```bash
+bash source-repository automation (not bundled) --help
+```
+
+Expected output: offline, live, and completion options are displayed when the
+skill supports them; help exits without mutation.
+
+## Troubleshooting
+
+| Issue | Cause | Resolution |
+|---|---|---|
+| Preflight fails | A required tool or access path is missing | Resolve it before rendering or applying |
+| Rendered assets are incomplete | Required non-secret inputs are absent | Complete intake and render again |
+| Apply is blocked | Review, credentials, or explicit acceptance is missing | Use the documented handoff |
+| Validation is incomplete | Live evidence is unavailable | Record the gap and keep completion open |
+
+## Shared add-on completion gate
+
+Whenever this workflow installs, configures, or hands off ITSI or a companion
+content pack, follow the
+[shared completion gate](#portability-note). Package delivery
+alone is not success; validate applicable ingest, ITSI objects, and shipped
+views against data.
+
+Automates installation and validation of **Splunk IT Service Intelligence**
+(`SA-ITOA`).
+
+## About ITSI
+
+ITSI is a premium Splunk product for AI-powered IT operations monitoring. It
+provides service-level visibility, ML-based anomaly detection, event
+correlation, and glass table dashboards. ITSI is also a dependency for
+bidirectional integrations in apps like Cisco ThousandEyes.
+
+ITSI requires a valid Splunk ITSI license. The install skill handles package
+delivery but does not manage licensing.
+
+## Routing boundary
+
+Use this skill when the requested outcome is to install, upgrade, restart, or
+validate the **ITSI product and its core app bundle**. After ITSI is installed,
+licensed, enabled, and healthy, stop this workflow and hand configuration to
+[`splunk-itsi-config`](https://github.com/CiscoDevNet/skills/tree/main/skills/splunk-itsi/splunk-itsi-config).
+
+Examples owned by `splunk-itsi-config` include entities, services, KPIs,
+thresholds, dependencies, service trees, service-template links, custom NEAPs,
+maintenance and other reviewed native objects, and content-pack catalog/import
+work. The configuration skill must never call this installation workflow
+automatically; a missing-product finding is an explicit user-visible handoff.
+
+## Package Model
+
+**Pull from Splunkbase first, fall back to `splunk-ta/`.** Use
+`splunk-app-install` with `--source splunkbase --app-id 1841`; the shared
+installer pins the repository-verified release by default. If Splunkbase is
+unavailable, fall back to the local package in `splunk-ta/`.
+
+The repository-verified package and configuration baseline is ITSI `4.21.2`,
+which also advertises Splunk 10.5, so the default install path needs no
+override. The current public listing is `5.0.1` and advertises Splunk 10.5 too,
+but its package and native-object contracts have not been verified here: the
+Splunkbase download for `1841` is entitlement-gated and returns HTTP 403 without
+an ITSI entitlement, so `5.0.1` could not be downloaded, unpacked, or inspected.
+The shared installer therefore defaults to `4.21.2`; only an explicit
+`--accept-unverified-release` follows public `5.0.1`. After that override,
+limit this skill to package installation and core-health validation, then
+review ITSI 5.0 before handing native object changes to `splunk-itsi-config`.
+
+After installation, use this skill to validate the deployment and check
+integration readiness for dependent apps (e.g., ThousandEyes).
+
+## Agent Behavior — Credentials
+
+**The agent must NEVER ask for passwords or secrets in chat.**
+
+Splunk and Splunkbase credentials are read automatically from the project-root
+`credentials` file (falls back to `~/.splunk/credentials`). If neither exists,
+guide the user to create it:
+
+```bash
+bash portable local helper
+```
+
+ITSI does not require additional device credentials or API keys beyond the
+standard Splunk authentication.
+
+## Environment
+
+| Item | Value |
+|------|-------|
+| Search-tier API | `SPLUNK_SEARCH_API_URI` env var (legacy alias: `SPLUNK_URI`) |
+| Cloud stack | `SPLUNK_CLOUD_STACK` for Cloud installs |
+| App name | `SA-ITOA` (also installs `itsi` and supporting apps) |
+| Splunkbase ID | 1841 |
+| Credentials | Project-root `credentials` file (falls back to `~/.splunk/credentials`) |
+| Skill source-repository automation (not bundled) | `source-repository automation (not bundled)/` (relative to repo root) |
+
+### Remote Splunk Connection
+
+```bash
+export SPLUNK_SEARCH_API_URI="https://splunk-host:8089"
+```
+
+## Setup Workflow
+
+### Step 1: Install ITSI
+
+```bash
+bash source-repository automation (not bundled) \
+  --source splunkbase --app-id 1841
+```
+
+That command defaults to the repository-reviewed `4.21.2` package. To request
+public `5.0.1`, add `--accept-unverified-release` and follow the compatibility
+review boundary above.
+
+If Splunkbase is unavailable, fall back to a local package:
+
+```bash
+bash source-repository automation (not bundled) \
+  --source local --file splunk-ta/itsi_package.spl
+```
+
+ITSI installs multiple apps including `SA-ITOA`, `itsi`, `SA-UserAccess`, and
+supporting components. The Splunkbase package bundles all of them.
+
+### Step 2: Restart If Required
+
+On Splunk Enterprise, restart Splunk after installation.
+On Splunk Cloud, check `acs status current-stack` and only run
+`acs restart current-stack` when ACS reports `restartRequired=true`.
+
+### Step 3: Validate
+
+```bash
+bash source-repository automation (not bundled)
+```
+
+Checks: core ITSI apps installed, KVStore collections available, ITSI
+navigation accessible, and integration readiness for dependent apps.
+
+## ITSI Core Apps
+
+| App | Purpose |
+|-----|---------|
+| `SA-ITOA` | ITSI core engine — service definitions, KPIs, event management |
+| `itsi` | ITSI UI — glass tables, service analyzer, deep dives |
+| `SA-UserAccess` | Role-based access control for ITSI |
+| `SA-ITSI-Licensechecker` | ITSI license validation |
+
+## Integration Points
+
+### Cisco ThousandEyes
+
+When ITSI is installed alongside the ThousandEyes app (`ta_cisco_thousandeyes`),
+the following integrations become available:
+
+- **Alert action**: `thousandeyes_forward_splunk_events` forwards ITSI notable
+  events to ThousandEyes
+- **Event sampling**: Controlled event forwarding rate to ThousandEyes
+- **KVStore**: `itsi_episodes` tracks episode state for ThousandEyes correlation
+
+The ThousandEyes validate script automatically detects ITSI presence and
+reports integration readiness.
+
+## Key Learnings / Known Issues
+
+1. **License required**: ITSI is a premium product. Installation will succeed
+   but full functionality requires a valid ITSI license applied to the Splunk
+   instance.
+2. **Multiple apps**: ITSI installs as a bundle of several apps. `SA-ITOA` is
+   the primary app to check for when verifying installation.
+3. **Cloud considerations**: On Splunk Cloud, ITSI installation may require
+   coordination with Splunk Cloud support depending on your stack type.
+4. **KVStore dependency**: ITSI relies heavily on KVStore. Ensure KVStore is
+   healthy before and after installation.
+5. **Restart required**: ITSI always requires a Splunk restart after
+   installation.
+
+
+## Portability note
+
+This Cisco DevNet package preserves the source skill's operational guidance, references, templates, and assets. Source-repository `agents/openai.yaml` files and repository-coupled scripts/shared helpers are intentionally not bundled. Any omitted automation must be recreated with the target product's supported tools after read-only discovery, exact-target review, explicit approval, rollback preparation, and post-change validation. Keep secrets in local mode-0600 files and never paste them into chat, commands, or logs.

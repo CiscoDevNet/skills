@@ -1,0 +1,19 @@
+{
+  "name": "splunk-itsi",
+  "displayName": "Splunk IT Service Intelligence",
+  "description": "Operational skills for Splunk IT Service Intelligence installation, configuration, and service operations.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Cisco DevNet",
+    "url": "https://developer.cisco.com/"
+  },
+  "homepage": "https://github.com/CiscoDevNet/skills/tree/main/skills/splunk-itsi",
+  "repository": "https://github.com/CiscoDevNet/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "splunk",
+    "splunk-itsi",
+    "agent-skills",
+    "observability"
+  ]
+}
