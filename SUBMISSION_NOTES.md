@@ -5,9 +5,10 @@ This migration is prepared against source commit
 `16ca54d351f793984f6768952e2c6c75b43007c7`.
 
 The destination fork is `chambear2809/skills`, with `CiscoDevNet/skills` as
-`upstream`. GitHub Issues are disabled on the fork, so the planned coordination
-issue could not be opened; the complete manifest is retained in
-`MIGRATION_MANIFEST.json` for maintainers to review.
+`upstream`. Issues are disabled on the fork, so the coordination issue was
+opened on upstream as [CiscoDevNet/skills#2](https://github.com/CiscoDevNet/skills/issues/2);
+the complete machine-readable manifest is also retained in
+`MIGRATION_MANIFEST.json`.
 
 The proposed 25-batch split is recorded per skill in the manifest: 10 Splunk
 Platform, 1 Isovalent, 4 Splunk Observability, 2 ThousandEyes, 3 AppDynamics,
