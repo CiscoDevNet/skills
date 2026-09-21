@@ -1,19 +1,27 @@
 # Cisco Agent Skills
 
-Reusable [Agent Skills](https://agentskills.io) for Cisco products, solutions,
-and technologies. Each skill is a self-contained folder with a `SKILL.md` file
-that compatible coding agents load only when a request matches its description.
+Reusable [Agent Skills](https://agentskills.io) for Cisco products, Splunk
+platforms, AppDynamics, Observability, and adjacent operational workflows.
+Each skill is a self-contained folder with a `SKILL.md` file that compatible
+coding agents load only when a request matches its description.
 
-The initial catalog includes:
+The migrated catalog adds 167 skills in seven namespaces:
 
-- Cisco IOS and IOS XE operational patterns
-- Cisco Security Cloud Control Firewall Manager (SCCFM) CLI and Ansible skills
-- Product namespaces for Meraki, ThousandEyes, Cisco Modeling Labs (CML),
-  cloud security, Cisco Identity Services Engine (ISE), Cisco Application
-  Centric Infrastructure (ACI), and Cisco Intersight
+- `splunk-platform/` — Splunk Platform, Cloud Platform, Enterprise, collectors,
+  applications, Cisco integrations, and data-source add-ons (87).
+- `splunk-observability-cloud/` — Splunk Observability Cloud, Galileo, Lemonade,
+  and telemetry integrations (36).
+- `splunk-enterprise-security/` — Enterprise Security, security portfolio, and
+  WideField workflows (18).
+- `appdynamics/` — AppDynamics administration, agents, monitoring, and
+  integrations (20).
+- `thousandeyes/` — ThousandEyes and cross-product integrations (3).
+- `splunk-itsi/` — ITSI lifecycle and configuration (2).
+- `isovalent/` — Isovalent platform installation (1).
 
-Product namespaces are scaffolds, not claims of product coverage. A namespace is
-listed as available only when it contains at least one reviewed `SKILL.md`.
+The existing Cisco namespaces remain available alongside the migrated catalog.
+The migration manifest and source attribution are recorded in
+[`MIGRATION_MANIFEST.json`](MIGRATION_MANIFEST.json) and [`SOURCES.md`](SOURCES.md).
 
 ## Installation
 
@@ -42,6 +50,9 @@ npx skills add CiscoDevNet/skills --all
 /plugin marketplace add CiscoDevNet/skills
 /plugin install ios@cisco-skills
 /plugin install sccfm@cisco-skills
+/plugin install splunk-platform@cisco-skills
+/plugin install splunk-observability-cloud@cisco-skills
+/plugin install appdynamics@cisco-skills
 ```
 
 Other product plugins can be installed with
