@@ -1,0 +1,205 @@
+# Cisco Secure Access — Reference
+
+## Table of contents
+
+- [Package Identity](#package-identity)
+- [Important Note](#important-note)
+- [Core Automation Endpoint](#core-automation-endpoint)
+- [Core Account Fields](#core-account-fields)
+- [Related Settings Surface](#related-settings-surface)
+- [Dashboard-Ready Settings Payload](#dashboard-ready-settings-payload)
+- [Modular Inputs](#modular-inputs)
+- [SCAN Sourcetype Contract](#scan-sourcetype-contract)
+- [Validation Checklist](#validation-checklist)
+- [Completion Validation](#completion-validation)
+
+Reference for the Cisco Secure Access App for Splunk package and its required
+event add-on.
+
+## Package Identity
+
+| Property | Value |
+|---|---|
+| App name | `cisco-cloud-security` |
+| Add-on name | `TA-cisco-cloud-security-addon` |
+| Splunkbase IDs | `5558` app, `7569` add-on |
+| Local package patterns | `cisco-secure-access-app-for-splunk_*`, `cisco-secure-access-add-on-for-splunk_*` |
+| Local package in repo | `splunk-ta/cisco-secure-access-app-for-splunk_1053.tgz` |
+| Packaged version inspected | `1.0.53` |
+
+## Important Note
+
+The Secure Access workflow needs both package types. The app provides
+dashboards plus the custom account/settings endpoints documented below. The
+add-on provides the event-log ingestion path and log-index settings used by
+Secure Access, Umbrella, and Cloudlock data.
+
+## Core Automation Endpoint
+
+The package’s main setup surface is the custom REST endpoint:
+
+```text
+/servicesNS/nobody/cisco-cloud-security/org_accounts
+```
+
+Supported actions identified in the package code:
+
+- `POST /org_accounts` — create an org account
+- `GET /org_accounts?orgId=<id>&fields=all` — fetch one org account
+- `PUT /org_accounts?orgId=<id>` — update an org account
+- `DELETE /org_accounts?orgId=<id>` — delete an org account
+- `POST /org_accounts?action=get_orgId` — discover `orgId` from credentials
+
+## Core Account Fields
+
+| Field | Required | Notes |
+|---|---|---|
+| `apiKey` | yes | secret |
+| `apiSecret` | yes | secret |
+| `baseURL` | yes | Secure Access API base URL |
+| `orgId` | yes for create/update | can be discovered with `action=get_orgId` |
+| `timezone` | yes | org setting |
+| `storageRegion` | yes | org setting |
+| `investigate_index` | optional | registers investigate settings |
+| `privateapp_index` | optional | registers Private Apps index and modular input |
+| `appdiscovery_index` | optional | registers App Discovery index and modular input |
+
+## Related Settings Surface
+
+The package also exposes a custom `/update_settings` endpoint backed by KV store
+collections such as:
+
+- `cloudlock_settings`
+- `selected_destination_lists`
+- `dashboard_settings`
+- `refresh_rate`
+- `s3_indexes`
+
+The repo automation now covers these settings through
+`source-repository automation (not bundled)`.
+
+## Dashboard-Ready Settings Payload
+
+The frontend posts settings in this shape:
+
+```json
+{
+  "data": {
+    "Dashboard": { "search_interval": "12" },
+    "cloudlock": {
+      "userName": "splunk-user",
+      "createdDate": "2026/03/20 01:23:45",
+      "configName": "Cloudlock_Default",
+      "url": "https://example",
+      "token": "secret",
+      "showIncidentDetails": "false",
+      "showUEBA": "false",
+      "cloudlock_start_date": "20/03/2026"
+    },
+    "selected_destination_lists": [
+      {
+        "dest_list_id": "123",
+        "dest_list_name": "Important list",
+        "role": "cs_admin"
+      }
+    ],
+    "s3_indexes": {
+      "dns": "cisco_secure_access_dns",
+      "proxy": "cisco_secure_access_proxy",
+      "createdDate": "2026/03/20 01:23:45"
+    },
+    "refresh_rate": "0",
+    "orgId": "example-org-id"
+  }
+}
+```
+
+The script writes the same structure to `/update_settings`.
+
+That path is broader than the initial skill scope; the first automation pass
+focuses on `org_accounts`.
+
+## Modular Inputs
+
+The app package ships these modular input kinds in `inputs.conf.spec`:
+
+- `cloudlock://<name>`
+- `cloudlock_health_check://<name>`
+- `destination_lists_health_check://<name>`
+- `investigate_health_check://<name>`
+- `app_discovery://<name>`
+- `private_apps://<name>`
+
+The `org_accounts` endpoint provisions the app discovery and private app inputs
+for you when the corresponding indexes are supplied.
+
+The add-on package supplies the event-log ingestion inputs and index settings
+that are not created by the app-only package. Keep `TA-cisco-cloud-security-addon`
+installed before validating production event-log coverage.
+
+## SCAN Sourcetype Contract
+
+The pinned SCAN catalog version `2026_08_01_2130` identifies these current
+Secure Access sourcetypes:
+
+```text
+cisco:cloud_security:appdiscovery
+cisco:cloud_security:audit
+cisco:cloud_security:dlp
+cisco:cloud_security:dns
+cisco:cloud_security:fileevent
+cisco:cloud_security:firewall
+cisco:cloud_security:intrusion
+cisco:cloud_security:ntg
+cisco:cloud_security:privateapps
+cisco:cloud_security:proxy
+cisco:cloud_security:ravpn
+cisco:cloud_security:ztna
+cisco:cloud_security:ztnaenrollment
+cisco:cloud_security:ztnaflow
+cisco:secure_access:*
+cisco:secure_access:alerts_accessrulechanges
+cisco:secure_access:alerts_apianomaly
+cisco:secure_access:alerts_behavioranalytics
+cisco:secure_access:alerts_connectivity_tunnels
+cisco:secure_access:security_events_dlp
+cisco:secure_access:security_events_dns
+cisco:secure_access:security_events_firewall
+cisco:secure_access:security_events_intrusion
+cisco:secure_access:security_events_ravpn
+cisco:secure_access:security_events_web
+cisco:secure_access:security_events_ztna
+```
+
+This catalog revision adds `cisco:cloud_security:ntg`, four split alert
+sourcetypes, and `cisco:secure_access:security_events_firewall`. It retires the
+combined `cisco:secure_access:security_events_andalerts` alias. The validator
+requires event evidence from a current `cisco:cloud_security:*` or
+`cisco:secure_access:*` family and warns when the retired combined alias is
+still present.
+
+For Umbrella-specific coverage, the current subset is audit, DLP, DNS,
+firewall, and proxy. `cisco:cloud_security:appdiscovery` remains valid for
+Secure Access but is no longer classified as an Umbrella sourcetype;
+`cisco:cloud_security:ip` is no longer in the current SCAN contract.
+
+## Validation Checklist
+
+- `cisco-cloud-security` is installed
+- `TA-cisco-cloud-security-addon` is installed
+- at least one org account exists, or the expected `orgId` can be fetched
+- optional `investigate_index`, `privateapp_index`, and `appdiscovery_index`
+  fields are present when requested
+- terms acceptance exists in `cloudlock-v2-tos`
+- `dashboard_settings` and `refresh_rate` are initialized when dashboard defaults are desired
+- optional `cloudlock_settings`, `selected_destination_lists`, and `s3_indexes`
+  are present when those dashboard features are in scope
+- data-flow evidence uses a current Secure Access sourcetype family rather
+  than merely finding unrelated events in a configured index
+
+## Completion Validation
+
+`validate.sh --completion`/`--strict` requires org configuration, visible
+shipped views, nonzero data flow in a configured index, and current Secure
+Access sourcetype-family evidence. The no-flag form is warning-oriented
+diagnostics; `--skip-data-flow` is incompatible with strict completion.
