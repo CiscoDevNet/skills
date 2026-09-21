@@ -1,0 +1,19 @@
+{
+  "name": "splunk-platform",
+  "displayName": "Splunk Platform",
+  "description": "Operational skills for Splunk Platform, Splunk Cloud Platform, Splunk Enterprise, collectors, and data-source integrations.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Cisco DevNet",
+    "url": "https://developer.cisco.com/"
+  },
+  "homepage": "https://github.com/CiscoDevNet/skills/tree/main/skills/splunk-platform",
+  "repository": "https://github.com/CiscoDevNet/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "splunk",
+    "splunk-platform",
+    "agent-skills",
+    "observability"
+  ]
+}

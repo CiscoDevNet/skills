@@ -120,6 +120,84 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Security"
+    },
+    {
+      "name": "appdynamics",
+      "source": {
+        "source": "local",
+        "path": "./plugins/appdynamics"
+      },
+      "description": "Operational skills for AppDynamics platform administration, agents, monitoring, and integrations.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_DEMAND"
+      },
+      "category": "Observability"
+    },
+    {
+      "name": "isovalent",
+      "source": {
+        "source": "local",
+        "path": "./plugins/isovalent"
+      },
+      "description": "Operational skills for Isovalent platform installation and lifecycle management.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_DEMAND"
+      },
+      "category": "Infrastructure"
+    },
+    {
+      "name": "splunk-enterprise-security",
+      "source": {
+        "source": "local",
+        "path": "./plugins/splunk-enterprise-security"
+      },
+      "description": "Operational skills for Splunk Enterprise Security, security portfolio products, and WideField integrations.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_DEMAND"
+      },
+      "category": "Security"
+    },
+    {
+      "name": "splunk-itsi",
+      "source": {
+        "source": "local",
+        "path": "./plugins/splunk-itsi"
+      },
+      "description": "Operational skills for Splunk IT Service Intelligence installation, configuration, and service operations.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_DEMAND"
+      },
+      "category": "Observability"
+    },
+    {
+      "name": "splunk-observability-cloud",
+      "source": {
+        "source": "local",
+        "path": "./plugins/splunk-observability-cloud"
+      },
+      "description": "Operational skills for Splunk Observability Cloud, Galileo, Lemonade, and telemetry integrations.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_DEMAND"
+      },
+      "category": "Observability"
+    },
+    {
+      "name": "splunk-platform",
+      "source": {
+        "source": "local",
+        "path": "./plugins/splunk-platform"
+      },
+      "description": "Operational skills for Splunk Platform, Splunk Cloud Platform, Splunk Enterprise, collectors, and data-source integrations.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_DEMAND"
+      },
+      "category": "Observability"
     }
   ]
 }
