@@ -1,0 +1,19 @@
+{
+  "name": "isovalent",
+  "displayName": "Isovalent",
+  "description": "Operational skills for Isovalent platform installation and lifecycle management.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Cisco DevNet",
+    "url": "https://developer.cisco.com/"
+  },
+  "homepage": "https://github.com/CiscoDevNet/skills/tree/main/skills/isovalent",
+  "repository": "https://github.com/CiscoDevNet/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "splunk",
+    "isovalent",
+    "agent-skills",
+    "infrastructure"
+  ]
+}

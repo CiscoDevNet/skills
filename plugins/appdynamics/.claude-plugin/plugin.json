@@ -1,0 +1,19 @@
+{
+  "name": "appdynamics",
+  "displayName": "AppDynamics",
+  "description": "Operational skills for AppDynamics platform administration, agents, monitoring, and integrations.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Cisco DevNet",
+    "url": "https://developer.cisco.com/"
+  },
+  "homepage": "https://github.com/CiscoDevNet/skills/tree/main/skills/appdynamics",
+  "repository": "https://github.com/CiscoDevNet/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "splunk",
+    "appdynamics",
+    "agent-skills",
+    "observability"
+  ]
+}

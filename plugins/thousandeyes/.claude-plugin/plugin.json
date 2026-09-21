@@ -1,8 +1,7 @@
 {
-  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "thousandeyes",
   "displayName": "Cisco ThousandEyes",
-  "description": "Agent Skills for Cisco ThousandEyes digital experience monitoring, testing, and automation.",
+  "description": "Operational skills for Cisco ThousandEyes, Meraki Assurance, and Observability Cloud integrations.",
   "version": "0.1.0",
   "author": {
     "name": "Cisco DevNet",
@@ -12,11 +11,9 @@
   "repository": "https://github.com/CiscoDevNet/skills",
   "license": "Apache-2.0",
   "keywords": [
-    "cisco",
+    "splunk",
     "thousandeyes",
-    "observability",
-    "digital-experience-monitoring",
-    "network-monitoring",
-    "agent-skills"
+    "agent-skills",
+    "observability"
   ]
 }

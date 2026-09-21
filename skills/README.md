@@ -1,16 +1,18 @@
 # Cisco Agent Skills catalog
 
-Skills are grouped by Cisco product or technology:
+Skills are grouped by Cisco, Splunk, AppDynamics, and partner-product
+namespace. The migrated namespaces contain 167 self-contained skills:
 
-- `aci/` — Cisco Application Centric Infrastructure
-- `cloud-security/` — Cisco cloud security products and services
-- `cml/` — Cisco Modeling Labs
-- `intersight/` — Cisco Intersight
-- `ios/` — Cisco IOS and IOS XE
-- `ise/` — Cisco Identity Services Engine
-- `meraki/` — Cisco Meraki
-- `sccfm/` — Cisco Security Cloud Control Firewall Manager
-- `thousandeyes/` — Cisco ThousandEyes
+- `appdynamics/` — AppDynamics (20)
+- `isovalent/` — Isovalent (1)
+- `splunk-enterprise-security/` — Splunk Enterprise Security and WideField (18)
+- `splunk-itsi/` — Splunk IT Service Intelligence (2)
+- `splunk-observability-cloud/` — Splunk Observability Cloud and Galileo (36)
+- `splunk-platform/` — Splunk Platform, Enterprise, Cloud, and integrations (87)
+- `thousandeyes/` — Cisco ThousandEyes integrations (3)
+
+Existing Cisco namespaces remain available: `aci/`, `cloud-security/`, `cml/`,
+`intersight/`, `ios/`, `ise/`, `meraki/`, and `sccfm/`.
 
 Each installable child directory contains a `SKILL.md`. Category `README.md`
 files reserve and explain product scope; they are not skills and are not loaded

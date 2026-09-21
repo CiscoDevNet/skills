@@ -1,0 +1,11 @@
+# Render only. Review before any privileged apply.
+bash source-repository automation (not bundled) \
+  --base /etc/otel/collector/agent_config.yaml \
+  --output /tmp/lemonade-agent_config.yaml \
+  --deployment-environment lemonade-dev \
+  --service-name lemonade-server
+
+bash source-repository automation (not bundled) \
+  --collector-config /tmp/lemonade-agent_config.yaml \
+  --collector-binary /usr/bin/otelcol \
+  --production

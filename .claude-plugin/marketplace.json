@@ -12,63 +12,175 @@
       "source": "./plugins/ios",
       "description": "Cisco IOS and IOS XE operational and configuration guidance.",
       "category": "networking",
-      "keywords": ["cisco", "ios", "ios-xe", "networking"]
+      "keywords": [
+        "cisco",
+        "ios",
+        "ios-xe",
+        "networking"
+      ]
     },
     {
       "name": "meraki",
       "source": "./plugins/meraki",
       "description": "Agent Skills for the Cisco Meraki platform.",
       "category": "networking",
-      "keywords": ["cisco", "meraki", "networking"]
+      "keywords": [
+        "cisco",
+        "meraki",
+        "networking"
+      ]
     },
     {
       "name": "thousandeyes",
       "source": "./plugins/thousandeyes",
       "description": "Agent Skills for Cisco ThousandEyes.",
       "category": "observability",
-      "keywords": ["cisco", "thousandeyes", "observability"]
+      "keywords": [
+        "cisco",
+        "thousandeyes",
+        "observability"
+      ]
     },
     {
       "name": "cml",
       "source": "./plugins/cml",
       "description": "Agent Skills for Cisco Modeling Labs.",
       "category": "networking",
-      "keywords": ["cisco", "cml", "network-simulation"]
+      "keywords": [
+        "cisco",
+        "cml",
+        "network-simulation"
+      ]
     },
     {
       "name": "cloud-security",
       "source": "./plugins/cloud-security",
       "description": "Agent Skills for Cisco cloud security products and services.",
       "category": "security",
-      "keywords": ["cisco", "cloud-security", "secure-access"]
+      "keywords": [
+        "cisco",
+        "cloud-security",
+        "secure-access"
+      ]
     },
     {
       "name": "ise",
       "source": "./plugins/ise",
       "description": "Agent Skills for Cisco Identity Services Engine.",
       "category": "security",
-      "keywords": ["cisco", "ise", "identity", "network-access-control"]
+      "keywords": [
+        "cisco",
+        "ise",
+        "identity",
+        "network-access-control"
+      ]
     },
     {
       "name": "aci",
       "source": "./plugins/aci",
       "description": "Agent Skills for Cisco Application Centric Infrastructure.",
       "category": "data-center",
-      "keywords": ["cisco", "aci", "apic", "data-center"]
+      "keywords": [
+        "cisco",
+        "aci",
+        "apic",
+        "data-center"
+      ]
     },
     {
       "name": "intersight",
       "source": "./plugins/intersight",
       "description": "Agent Skills for Cisco Intersight.",
       "category": "infrastructure",
-      "keywords": ["cisco", "intersight", "infrastructure"]
+      "keywords": [
+        "cisco",
+        "intersight",
+        "infrastructure"
+      ]
     },
     {
       "name": "sccfm",
       "source": "./plugins/sccfm",
       "description": "Safely operate Cisco Security Cloud Control Firewall Manager through its CLI and Ansible collection.",
       "category": "security",
-      "keywords": ["cisco", "sccfm", "firewall-manager", "ansible"]
+      "keywords": [
+        "cisco",
+        "sccfm",
+        "firewall-manager",
+        "ansible"
+      ]
+    },
+    {
+      "name": "appdynamics",
+      "source": "./plugins/appdynamics",
+      "description": "Operational skills for AppDynamics platform administration, agents, monitoring, and integrations.",
+      "category": "observability",
+      "keywords": [
+        "splunk",
+        "appdynamics",
+        "agent-skills",
+        "observability"
+      ]
+    },
+    {
+      "name": "isovalent",
+      "source": "./plugins/isovalent",
+      "description": "Operational skills for Isovalent platform installation and lifecycle management.",
+      "category": "infrastructure",
+      "keywords": [
+        "splunk",
+        "isovalent",
+        "agent-skills",
+        "infrastructure"
+      ]
+    },
+    {
+      "name": "splunk-enterprise-security",
+      "source": "./plugins/splunk-enterprise-security",
+      "description": "Operational skills for Splunk Enterprise Security, security portfolio products, and WideField integrations.",
+      "category": "security",
+      "keywords": [
+        "splunk",
+        "splunk-enterprise-security",
+        "agent-skills",
+        "security"
+      ]
+    },
+    {
+      "name": "splunk-itsi",
+      "source": "./plugins/splunk-itsi",
+      "description": "Operational skills for Splunk IT Service Intelligence installation, configuration, and service operations.",
+      "category": "observability",
+      "keywords": [
+        "splunk",
+        "splunk-itsi",
+        "agent-skills",
+        "observability"
+      ]
+    },
+    {
+      "name": "splunk-observability-cloud",
+      "source": "./plugins/splunk-observability-cloud",
+      "description": "Operational skills for Splunk Observability Cloud, Galileo, Lemonade, and telemetry integrations.",
+      "category": "observability",
+      "keywords": [
+        "splunk",
+        "splunk-observability-cloud",
+        "agent-skills",
+        "observability"
+      ]
+    },
+    {
+      "name": "splunk-platform",
+      "source": "./plugins/splunk-platform",
+      "description": "Operational skills for Splunk Platform, Splunk Cloud Platform, Splunk Enterprise, collectors, and data-source integrations.",
+      "category": "observability",
+      "keywords": [
+        "splunk",
+        "splunk-platform",
+        "agent-skills",
+        "observability"
+      ]
     }
   ]
 }

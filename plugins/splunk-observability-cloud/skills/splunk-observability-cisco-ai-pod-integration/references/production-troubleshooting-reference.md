@@ -1,0 +1,204 @@
+# Production troubleshooting: OpenShift AI Pod deployment
+
+## Table of contents
+
+- [Issue 1: NIM/DCGM metrics not appearing](#issue-1-nimdcgm-metrics-not-appearing)
+- [Issue 2: Receiver_creator collision with chart autodetection](#issue-2-receivercreator-collision-with-chart-autodetection)
+- [Issue 3: Tetragon logs missing from Splunk Platform](#issue-3-tetragon-logs-missing-from-splunk-platform)
+- [Issue 4: kubelet_stats receiver fails on OpenShift](#issue-4-kubeletstats-receiver-fails-on-openshift)
+- [Issue 5: Helm token in plaintext on disk](#issue-5-helm-token-in-plaintext-on-disk)
+- [Issue 6: cluster-receiver pod evicted (OOMKilled)](#issue-6-cluster-receiver-pod-evicted-oomkilled)
+- [Issue 7: cert-manager conflict on cluster-receiver](#issue-7-cert-manager-conflict-on-cluster-receiver)
+- [Issue 8: cloudProvider auto-detection wrong for bare-metal](#issue-8-cloudprovider-auto-detection-wrong-for-bare-metal)
+- [Summary of production lessons codified in the umbrella](#summary-of-production-lessons-codified-in-the-umbrella)
+
+This annex documents the specific issues encountered during a production OpenShift deployment of the AI Pod observability stack. Each issue is presented as **symptom**, **root cause**, **fix**, and **prevention**.
+
+## Issue 1: NIM/DCGM metrics not appearing
+
+**Symptom**: After `helm install splunk-otel-collector ...`, the agent DaemonSet pods are running but NIM and DCGM metrics never reach O11y. SignalFlow `data('DCGM_FI_DEV_GPU_UTIL').count().publish()` returns 0.
+
+**Root cause**: The Splunk OTel collector's ServiceAccount lacked RBAC to list endpoints in `nvidia-gpu-operator`, `nvidia-inference`, and `nvidia-nemo` namespaces. The receiver_creator silently dropped scrape targets.
+
+**Diagnosis steps**:
+
+```bash
+# Check pod status (looks healthy)
+oc -n splunk-otel get pods
+
+# Check agent logs for forbidden errors
+oc -n splunk-otel logs <agent-pod> --tail=300 | egrep 'forbidden|nvidia|dcgm'
+# Found: "endpoints is forbidden: User \"system:serviceaccount:splunk-otel:splunk-otel-collector\" cannot list resource \"endpoints\" in API group \"\" in the namespace \"nvidia-gpu-operator\""
+
+# Confirm RBAC gap
+oc auth can-i --as system:serviceaccount:splunk-otel:splunk-otel-collector list endpoints -n nvidia-gpu-operator
+# no
+```
+
+**Fix**: Add `rbac.customRules` to the chart values, granting `endpoints` + `endpointslices` cluster-wide:
+
+```yaml
+rbac:
+  customRules:
+    - apiGroups: [""]
+      resources: ["endpoints"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["discovery.k8s.io"]
+      resources: ["endpointslices"]
+      verbs: ["get", "list", "watch"]
+```
+
+Re-run `helm upgrade`. Metrics appear within ~1 scrape cycle.
+
+**Prevention**: The umbrella emits `rbac.customRules` automatically when `nim_scrape_mode: endpoints` is selected. The default is `receiver_creator`, which does not need this endpoint-discovery RBAC. See `endpoints-rbac-patch.md`.
+
+## Issue 2: Receiver_creator collision with chart autodetection
+
+**Symptom**: After fixing Issue 1, DCGM metrics appear DUPLICATED in O11y — every GPU shows up twice in dashboards.
+
+**Root cause**: The chart's `autodetect.prometheus: true` (chart default) auto-creates `receiver_creator/nvidia` for DCGM Exporter. Our renderer also creates `receiver_creator/dcgm-cisco`. Both scrape the same DCGM endpoints, producing duplicate metric series.
+
+**Diagnosis steps**:
+
+```bash
+# Check rendered ConfigMap for both receivers
+oc -n splunk-otel get cm <release>-splunk-otel-collector-agent -o jsonpath='{.data.relay}' \
+  | grep -E 'receiver_creator/(nvidia|dcgm-cisco)'
+# Found both.
+```
+
+**Fix**: Remove or disable the colliding `receiver_creator/nvidia` block and retain the skill-owned `receiver_creator/dcgm-cisco` block. The existing-collector apply path removes stale `receiver_creator/nvidia` values, and validation rejects that component name in the composed overlay. See the NVIDIA GPU child skill's [receiver-creator naming reference](../../splunk-observability-nvidia-gpu-integration/references/receiver-creator-naming.md).
+
+**Prevention**: The umbrella's renderer always uses the unique name `receiver_creator/dcgm-cisco`, never `nvidia`. The NVIDIA child regressions `test_render_uses_dcgm_cisco_receiver_creator_not_nvidia` and `test_renderer_rejects_receiver_creator_named_nvidia` cover the rendered default and rejected override.
+
+## Issue 3: Tetragon logs missing from Splunk Platform
+
+**Symptom**: Tetragon process-exec events configured to ship to Splunk Platform via fluentd, but no events arrive in the `cisco_isovalent` index.
+
+**Root cause**: The Tetragon Helm chart's `export.mode: fluentd` requires a `fluent-plugin-splunk-hec` plugin which is **deprecated** and not maintained. Fluentd config silently failed to start; no error in cluster events.
+
+**Fix**: Switched Tetragon to `export.mode: file` (writing to a hostPath mount at `/var/run/cilium/tetragon/tetragon.log`). Configured the Splunk OTel collector chart's `logsCollection.extraFileLogs.filelog/tetragon` to read the file and ship via the splunkhec exporter.
+
+```yaml
+# Tetragon Helm values
+export:
+  mode: file
+  exportDirectory: /var/run/cilium/tetragon
+  exportFilename: tetragon.log
+```
+
+```yaml
+# Splunk OTel collector overlay
+agent:
+  extraVolumes:
+    - name: tetragon
+      hostPath: { path: /var/run/cilium/tetragon }
+  extraVolumeMounts:
+    - name: tetragon
+      mountPath: /var/run/cilium/tetragon
+logsCollection:
+  extraFileLogs:
+    filelog/tetragon:
+      include: [/var/run/cilium/tetragon/*.log]
+      operators: [...]
+```
+
+**Prevention**: The `splunk-observability-isovalent-integration` skill renders this exact pattern. The legacy fluentd path is gated behind `--legacy-fluentd-hec` for users who insist on it (with a banner warning of deprecation).
+
+## Issue 4: kubelet_stats receiver fails on OpenShift
+
+**Symptom**: After deploy, the agent DaemonSet logs show `kubelet_stats: x509: certificate signed by unknown authority` for every scrape cycle.
+
+**Root cause**: OpenShift's kubelet uses an internal CA that's not in the agent pod's default CA bundle. The receiver's default `insecure_skip_verify: false` rejects the cert.
+
+**Fix**: Set `insecure_skip_verify: true` on the receiver in the chart values overlay. Chart 0.157.0 renamed this receiver from `kubeletstats` to `kubelet_stats`; chart 0.158.0 hard-fails on the old name, so the overlay must use `kubelet_stats`.
+
+```yaml
+agent:
+  config:
+    receivers:
+      kubelet_stats:
+        insecure_skip_verify: true
+```
+
+**Prevention**: The umbrella's renderer applies this when `--distribution openshift`. Vanilla Kubernetes does not receive this override.
+
+## Issue 5: Helm token in plaintext on disk
+
+**Symptom**: A grep over the production values file (`6-splunk-otel-collector-values.yaml`) revealed a HEC token in plaintext at line 412.
+
+**Root cause**: An operator hand-edited the values file to put the token inline instead of using the `--set-file splunkObservability.accessToken=$TOKEN_FILE` pattern (which keeps the token out of both the values file and the process command line).
+
+**Fix**:
+
+1. Rotated the leaked token immediately.
+2. Removed the inline token from the values file.
+3. Established the convention: NEVER hand-edit a values file with secrets; always use `helm upgrade ... --reuse-values --set-file splunkObservability.accessToken=$TOKEN_FILE`. (Avoid `--set ...=$(cat $TOKEN_FILE)`, which exposes the token in `ps`/argv.)
+
+**Prevention**: The umbrella's renderer NEVER writes tokens to the rendered overlay. The validate.sh script rejects any rendered file containing token-shaped strings. The handoff source-repository automation (not bundled) use the `--set-file splunkObservability.accessToken=$TOKEN_FILE` pattern explicitly.
+
+## Issue 6: cluster-receiver pod evicted (OOMKilled)
+
+**Symptom**: After running for ~24 hours, the cluster-receiver pod was OOMKilled. Pod restarted; metrics gap of ~30s; recurred every ~24 hours.
+
+**Root cause**: The cluster-receiver runs the cisco_os receiver (Nexus scraper) and was buffering more metrics than its 200Mi memory limit allowed. The cisco_os receiver's per-device JSON parsing has high transient memory usage.
+
+**Fix**: Increased the cluster-receiver's memory limit:
+
+```yaml
+clusterReceiver:
+  resources:
+    requests: { memory: 300Mi }
+    limits: { memory: 800Mi }
+```
+
+**Prevention**: The umbrella does not currently render cluster-receiver resource defaults. Add reviewed `clusterReceiver.resources` overrides to the base collector values after sizing the Nexus workload; the 300Mi request and 800Mi limit above are the values used in this incident, not automatic skill defaults.
+
+## Issue 7: cert-manager conflict on cluster-receiver
+
+**Symptom**: `helm install` fails with `Error: cert-manager: webhook returned: 500`.
+
+**Root cause**: The target OpenShift deployment already had cert-manager installed cluster-wide. The chart's bundled cert-manager attempted to install a CRD that conflicted with the existing one.
+
+**Fix**: Set `certmanager.enabled: false` in the chart values overlay.
+
+```yaml
+certmanager:
+  enabled: false
+```
+
+**Prevention**: The umbrella's renderer applies this when `--distribution openshift` (OpenShift commonly has an existing certificate-management path that must be reviewed).
+
+## Issue 8: cloudProvider auto-detection wrong for bare-metal
+
+**Symptom**: The chart attempts to query EC2 IMDS / GCE metadata server to populate `cloud.`* resource attributes. Logs spam with `imds: connection timed out`.
+
+**Root cause**: Bare-metal OpenShift has no cloud provider; the chart's auto-detection defaults to "aws" and waits for IMDS responses that never come.
+
+**Fix**: Explicitly set `cloudProvider: ""` (empty string) in the chart values:
+
+```yaml
+cloudProvider: ""
+```
+
+**Prevention**: The umbrella's renderer applies this when `--distribution openshift`; there is no `openshift-baremetal` distribution value.
+
+## Summary of production lessons codified in the umbrella
+
+
+| Issue                 | Codified as                                                      |
+| --------------------- | ---------------------------------------------------------------- |
+| RBAC for endpoints    | `--nim-scrape-mode endpoints` triggers `rbac.customRules`        |
+| Receiver collision    | Hardcoded `receiver_creator/dcgm-cisco` (never `nvidia`)         |
+| Tetragon logs         | File-based via splunk-observability-isovalent-integration        |
+| kubeletStats TLS      | `--distribution openshift` sets `insecure_skip_verify: true`     |
+| Helm token plaintext  | validation rejects rendered tokens; handoffs use `--set-file`    |
+| cluster-receiver OOM  | reviewed base-values resource override; no automatic default     |
+| cert-manager conflict | OpenShift target sets `certmanager.enabled: false`               |
+| cloud provider        | OpenShift target sets `cloudProvider: ""`                        |
+
+
+The regression module covers key rendered contracts such as endpoint RBAC,
+receiver naming, OpenShift kubelet TLS, and secret-safe handoffs. Operational
+lessons such as Tetragon deployment behavior and cluster-receiver sizing remain
+reviewed runbook evidence rather than automated regression coverage.

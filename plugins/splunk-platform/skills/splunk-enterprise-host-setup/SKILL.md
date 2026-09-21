@@ -1,0 +1,253 @@
+---
+name: splunk-enterprise-host-setup
+description: >
+  Use when the user asks to bootstrap a Splunk host, install a heavy forwarder, build a search/index/forwarder tier, or configure clustered Splunk Enterprise nodes. Install Splunk Enterprise packages on Linux hosts and configure them as a search-tier, indexer, heavy-forwarder, cluster manager, indexer peer, search head cluster deployer, or search head cluster member. Supports local or SSH execution, official URL or local package sources, role-aware forwarding, and single-site clustered topologies.
+license: Apache-2.0
+compatibility: "Claude Code, GitHub Copilot, OpenAI Codex, Cursor, Gemini CLI"
+metadata:
+  product: splunk-platform
+  maturity: draft
+---
+
+# Splunk Enterprise Host Setup
+
+## Prerequisites
+
+| Tool or access | Purpose | Verify |
+|---|---|---|
+| Bash and Python 3 | Run bundled setup and validation helpers | `bash --version && python3 --version` |
+| Required product/platform access | Inspect or configure the selected target | Complete the documented preflight |
+| Credential files for live modes | Keep secrets out of chat | Verify paths only |
+
+## Workflow Overview
+
+```text
+┌───────────┐   ┌───────────────┐   ┌───────────────┐   ┌─────────────────┐
+│ Preflight │ → │ Render/review │ → │ Apply/handoff │ → │ Validate evidence │
+└───────────┘   └───────────────┘   └───────────────┘   └─────────────────┘
+```
+
+## When to Activate
+
+- Bootstrap a Splunk host, install a heavy forwarder, build a search/index/forwarder tier, or configure clustered
+  Splunk Enterprise nodes.
+- Preview and review the splunk enterprise host setup workflow before any live apply phase.
+- Diagnose failed prerequisites, generated assets, configuration, or validation evidence.
+
+## Scope
+
+Follow the documented read-only or render-first path whenever it is available.
+This skill does not imply permission to mutate live systems. Require explicit
+apply flags, protected credentials, and operator review for state changes.
+
+## Examples
+
+Inspect the supported setup modes before selecting one:
+
+```bash
+bash source-repository automation (not bundled) --help
+```
+
+Expected output: usage, supported modes, and required arguments are displayed
+without changing the target environment.
+
+Inspect validation modes before running completion checks:
+
+```bash
+bash source-repository automation (not bundled) --help
+```
+
+Expected output: offline, live, and completion options are displayed when the
+skill supports them; help exits without mutation.
+
+## Troubleshooting
+
+| Issue | Cause | Resolution |
+|---|---|---|
+| Preflight fails | A required tool or access path is missing | Resolve it before rendering or applying |
+| Rendered assets are incomplete | Required non-secret inputs are absent | Complete intake and render again |
+| Apply is blocked | Review, credentials, or explicit acceptance is missing | Use the documented handoff |
+| Validation is incomplete | Live evidence is unavailable | Record the gap and keep completion open |
+
+Bootstraps Linux hosts that should run **full Splunk Enterprise**.
+
+## Architecture First
+
+- A **heavy forwarder is not a separate package**. It is a full Splunk
+  Enterprise install with forwarder-style configuration.
+- This skill is for **self-managed Splunk Enterprise** hosts only.
+- The CLI takes the canonical role names below via `--host-bootstrap-role`:
+  - `standalone-search-tier`
+  - `standalone-indexer`
+  - `heavy-forwarder`
+  - `cluster-manager`
+  - `indexer-peer`
+  - `shc-deployer`
+  - `shc-member`
+- The "standalone-" prefix marks single-instance roles; clustered indexer and
+  search-head-cluster control-plane roles use the unprefixed names above.
+
+## Agent Behavior — Credentials
+
+**Never ask for passwords or shared secrets in chat.**
+
+- Use `skills/splunk-enterprise-host-setup/template.example` as the intake
+  worksheet for non-secret values.
+- Keep secrets in temporary files only, for example:
+
+```bash
+bash portable local helper /tmp/splunk_admin_password
+bash portable local helper /tmp/splunk_idxc_secret
+bash portable local helper /tmp/splunk_shc_secret
+```
+
+- Reuse the project `credentials` file or `~/.splunk/credentials` for SSH and
+  REST defaults when possible. SSH execution additionally requires either an
+  operator-reviewed `SPLUNK_SSH_KNOWN_HOSTS_FILE` or a verified
+  `SPLUNK_SSH_HOST_KEY_FINGERPRINT`. The warned
+  `SPLUNK_SSH_ALLOW_TOFU=true` escape hatch is for disposable labs only.
+
+## Package Model
+
+Supported package sources:
+
+1. `--source splunk-auth` for official Splunk download URLs that should use the
+   stored Splunk.com credentials
+2. `--source remote` for public or internal direct download URLs
+3. `--source local` for packages already present on disk
+
+If `--url` is omitted, or set to `latest`, remote and authenticated download
+flows resolve the latest official Linux package URL from Splunk's Enterprise
+download page at runtime. When `--package-type auto` is left in place for
+latest resolution, the skill prefers `.deb` or `.rpm` based on the target OS
+family and falls back to `.tgz`. Latest official downloads also require
+successful verification against Splunk's official SHA512 checksum. If live
+latest resolution fails, rerun with `--allow-stale-latest` to use the most
+recent cached official metadata when it is younger than 30 days.
+
+Supported package formats:
+
+- `.tgz` / `.tar.gz`
+- `.rpm`
+- `.deb`
+
+The skill caches downloaded packages in the repo-local `splunk-ta/` directory.
+
+Install behavior:
+
+- If the target host does not already have `SPLUNK_HOME/bin/splunk`, `install`
+  performs a fresh install.
+- If Splunk is already present and the package version differs, `install`
+  performs an in-place upgrade for `.rpm`, `.deb`, or `.tgz`.
+- If the installed version already matches the requested package version,
+  `install` succeeds as a no-op and skips package replacement.
+- Install-only upgrades do not require `--admin-password-file`. Password-based
+  auth is still required for later `configure` or `cluster` work that uses
+  authenticated Splunk CLI commands.
+
+## Scripts
+
+### setup.sh
+
+Main bootstrap entrypoint:
+
+```bash
+bash source-repository automation (not bundled) \
+  --phase all \
+  --execution ssh \
+  --host-bootstrap-role heavy-forwarder \
+  --source remote \
+  --package-type tgz \
+  --admin-password-file /tmp/splunk_admin_password \
+  --cluster-manager-uri https://cm01.example.com:8089 \
+  --discovery-secret-file /tmp/splunk_idxc_secret
+```
+
+Useful phases:
+
+- `download` — fetch and checksum-verify the package into `splunk-ta/`
+- `install` — fresh-install, upgrade, or same-version no-op; fresh installs
+  seed the admin user, upgrades stop Splunk before package replacement, and all
+  successful install paths start Splunk and can enable boot-start
+- `configure` — apply role-local configuration such as receiving or forwarding
+- `cluster` — apply clustered settings such as manager, peer, or SHC membership
+- `all` — run the full workflow
+
+Clustered-role upgrades still execute through the per-host `setup.sh` path, but
+the skill can now render a rolling plan with one host per wave, pre/post
+validation commands, and cluster health gates:
+
+```bash
+python3 source-repository automation (not bundled) \
+  --role indexer-peer \
+  --hosts idx01.example.com,idx02.example.com,idx03.example.com \
+  --cluster-manager-host cm01.example.com \
+  --cluster-manager-uri https://cm01.example.com:8089 \
+  --admin-password-file /tmp/splunk_admin_password
+```
+
+The planner is render-only. It does not SSH, restart Splunk, or modify hosts;
+operators still run the generated per-host commands after each health gate is
+green.
+
+### validate.sh
+
+Checks package install state, service health, role-specific config, and
+clustered status where relevant.
+
+```bash
+bash source-repository automation (not bundled) \
+  --execution ssh \
+  --host-bootstrap-role indexer-peer \
+  --admin-password-file /tmp/splunk_admin_password
+```
+
+### smoke_latest_resolution.sh
+
+Quick live smoke for the latest official package resolver without downloading
+the full package payload:
+
+```bash
+bash source-repository automation (not bundled) \
+  --package-type auto
+```
+
+## Key Defaults
+
+- `SPLUNK_HOME=/opt/splunk`
+- Linux + systemd only
+- single-site clustering only
+- heavy forwarders default to `indexAndForward=false`
+- clustered heavy forwarders default to **indexer discovery**
+- standalone-search-tier roles enable Splunk Web by default
+- SHC member adds require `--current-shc-member-uri` unless `--bootstrap-shc`
+  is used to create a brand-new cluster
+
+## Enterprise upgrade ladder (10.4)
+
+Splunk Enterprise has **no 10.3 release train**. Supported paths to **10.4**
+include **10.2 → 10.4**, **10.0 → 10.2 → 10.4**, and fresh installs on
+**10.4.1** (default in this repo).
+
+Invalid or high-risk jumps this skill should warn about during planning:
+
+- **9.x → 10.4** without an intermediate **10.0** or **10.2** stop (KV Store
+  MongoDB 7+ prerequisite).
+- Any upgrade target below the SVD floor for the selected train (see
+  `splunk-enterprise-public-exposure-hardening` or
+  `portable local helper`).
+
+Enterprise **10.4** also removes TLS **1.0/1.1** negotiation and applies KV
+Store MongoDB **8** automatically when upgrading from **10.x**. Route PKI and
+KV Store preflight work to `splunk-platform-pki-setup` and
+`splunk-kvstore-admin-setup` before executing host upgrades.
+
+## References
+
+- [reference.md](reference.md) for role placement, ports, and topology notes
+- [template.example](template.example) for the non-secret intake worksheet
+
+
+## Portability note
+
+This Cisco DevNet package preserves the source skill's operational guidance, references, templates, and assets. Source-repository `agents/openai.yaml` files and repository-coupled scripts/shared helpers are intentionally not bundled. Any omitted automation must be recreated with the target product's supported tools after read-only discovery, exact-target review, explicit approval, rollback preparation, and post-change validation. Keep secrets in local mode-0600 files and never paste them into chat, commands, or logs.

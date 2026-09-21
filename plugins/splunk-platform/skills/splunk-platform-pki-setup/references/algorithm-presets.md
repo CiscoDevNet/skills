@@ -1,0 +1,153 @@
+# Algorithm Presets
+
+## Table of contents
+
+- [`splunk-modern` (default)](#splunk-modern-default)
+- [CBC suites were removed from this preset](#cbc-suites-were-removed-from-this-preset)
+- [`fips-140-3`](#fips-140-3)
+- [`stig`](#stig)
+- [Forbidden everywhere (regardless of preset)](#forbidden-everywhere-regardless-of-preset)
+- [TLS 1.3](#tls-13)
+
+Selectable with `--tls-policy {splunk-modern|fips-140-3|stig}`.
+The actual values shipped to the renderer live in
+[`algorithm-policy.json`](algorithm-policy.json) (machine-readable
+companion); this doc is the human-readable narrative.
+
+## `splunk-modern` (default)
+
+Derived from Splunk's documented modern set per
+[About TLS encryption and cipher suites](https://help.splunk.com/en/splunk-enterprise/administer/manage-users-and-security/10.4/install-splunk-enterprise-securely/about-tls-encryption-and-cipher-suites),
+restricted to AEAD suites.
+
+| Knob | Value |
+|---|---|
+| `sslVersions` | `tls1.2,tls1.3` on Splunk 10.4+; `tls1.2` on older versions |
+| `sslVersionsForClient` | same version-aware value |
+| `[tls1.3] cipherSuite` | `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256` |
+| `cipherSuite` | `ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256` |
+| `ecdhCurves` | `prime256v1, secp384r1, secp521r1` |
+| Allowed key algos | RSA-2048+, ECDSA P-256/P-384/P-521 |
+| Allowed sig algos | RSA-SHA256, RSA-SHA384, RSA-SHA512, ECDSA-SHA256, ECDSA-SHA384, ECDSA-SHA512 |
+| LDAP cipher | same as splunkd (rendered into `ldap.conf`) |
+
+This matches the `cipher_suite` and `ecdh_curves` constants in
+[`splunk-enterprise-public-exposure-hardening/source-repository automation (not bundled)`](#portability-note))
+so the two skills agree on the on-the-wire crypto.
+
+### CBC suites were removed from this preset
+
+`splunk-modern` previously ended with four non-AEAD suites:
+`ECDHE-ECDSA-AES256-SHA384`, `ECDHE-RSA-AES256-SHA384`,
+`ECDHE-ECDSA-AES128-SHA256`, and `ECDHE-RSA-AES128-SHA256`. Despite the
+names, all four are **CBC mode** — OpenSSL does not put `CBC` in the
+suite name, and `openssl ciphers -v` reports them as `Enc=AES(n)` with no
+AEAD token. CBC is listed as deprecated by this repository's own
+cryptography rules, and `splunk-modern` is the default `--tls-policy`, so
+every operator who did not explicitly choose otherwise was getting them.
+
+**If you have clients that genuinely cannot negotiate AEAD**, do not
+re-add the suites to `splunk-modern`. That silently weakens the default
+for every deployment. Choose one of these instead, in preference order:
+
+1. **Fix the client.** Any TLS stack from the last decade supports
+   `ECDHE-*-AES*-GCM-*`. In practice the blocker is a pinned old Java
+   (pre-8u161), OpenSSL 0.9.8, or a .NET Framework app that has not
+   enabled TLS 1.2. Each has a supported remediation that does not
+   involve changing the server.
+2. **Terminate TLS for those clients somewhere else.** Put the legacy
+   client behind the reverse proxy that
+   [`splunk-enterprise-public-exposure-hardening`](https://github.com/CiscoDevNet/skills/tree/main/skills/splunk-platform/splunk-enterprise-public-exposure-hardening)
+   already renders, and let the proxy offer the weaker suite on a
+   separate internal listener while Splunk's own listener stays AEAD-only.
+   This confines the weakness to one hop on a network you control.
+3. **Carry an explicit compatibility preset**, if neither of the above is
+   possible. Copy `algorithm-policy.json`, add a preset (for example
+   `splunk-legacy-cbc`) with the CBC suites appended *and* a
+   `cipher_policy` that declares the exception:
+
+   ```json
+   "cipher_policy": {
+     "require_aead": false,
+     "forbid_cbc_mode": false,
+     "forbid_sha1_mac": true,
+     "forbidden_tokens": ["NULL", "EXPORT", "RC4", "DES", "3DES", "MD5", "ADH", "AECDH", "ANON"]
+   }
+   ```
+
+   Pass it with `--algorithm-policy-file`, and select it with
+   `--tls-policy splunk-legacy-cbc`. The renderer validates the file on
+   load, so the relaxation has to be written down deliberately rather
+   than happening by accident, and it shows up in review as a named
+   non-default choice scoped to the one deployment that needs it.
+
+Option 3 still forbids SHA-1 MACs. If a client needs
+`ECDHE-RSA-AES128-SHA` as well, it is outside anything this skill will
+render; treat that as a decommission item, not a configuration one.
+
+## `fips-140-3`
+
+NIST-approved AEAD only per
+[Secure Splunk Enterprise with FIPS](https://help.splunk.com/en/splunk-enterprise/administer/manage-users-and-security/10.2/establish-and-maintain-compliance-with-fips-and-common-criteria-in-splunk-enterprise/secure-splunk-enterprise-with-fips).
+
+| Knob | Value |
+|---|---|
+| `sslVersions` | `tls1.2,tls1.3` on Splunk 10.4+; `tls1.2` on older versions |
+| `sslVersionsForClient` | same version-aware value |
+| `[tls1.3] cipherSuite` | `TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256` |
+| `[tls1.3] groups` | `prime256v1, secp384r1` (the groups documented as FIPS 140-3 approved by Splunk) |
+| `cipherSuite` | AEAD-only: `ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256` (no CBC, no SHA-1, no anonymous DH) |
+| `ecdhCurves` | `prime256v1, secp384r1, secp521r1` |
+| Allowed key algos | RSA-2048+, ECDSA P-256/P-384/P-521 |
+| Allowed sig algos | RSA-SHA256, RSA-SHA384, RSA-SHA512, ECDSA-SHA256, ECDSA-SHA384, ECDSA-SHA512 (no SHA-1, no MD5) |
+| Forbidden | RSA-1024, DSA, MD5, SHA-1, AES-CBC, anonymous DH, NULL ciphers |
+| Required env | `SPLUNK_FIPS_VERSION = 140-3` in `splunk-launch.conf` |
+
+Selecting `--tls-policy fips-140-3` does NOT automatically set
+`--fips-mode 140-3`; pass both for a complete FIPS posture. The
+preset exists separately so an operator can run FIPS-grade ciphers
+WITHOUT enabling the full FIPS module (useful during Phase 1 of
+the FIPS upgrade).
+
+## `stig`
+
+DISA STIG-aligned subset, cross-referenced by
+[`splunk-enterprise-public-exposure-hardening/references/disa-stig-cross-reference.md`](../../splunk-enterprise-public-exposure-hardening/references/disa-stig-cross-reference.md).
+
+| Knob | Value |
+|---|---|
+| `sslVersions` | `tls1.2,tls1.3` on Splunk 10.4+; `tls1.2` on older versions |
+| `sslVersionsForClient` | same version-aware value |
+| `[tls1.3] cipherSuite` | `TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256` |
+| `[tls1.3] groups` | `secp384r1` (P-256 is excluded by this stricter preset; P-521 is not in Splunk's documented FIPS 140-3 TLS 1.3 group set) |
+| `cipherSuite` | AEAD-only with explicit forbid list aligned to STIG: `ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256` |
+| `ecdhCurves` | `secp384r1, secp521r1` (no `prime256v1` for STIG-high) |
+| Allowed key algos | RSA-3072+, ECDSA P-384/P-521 |
+| Allowed sig algos | RSA-SHA384, RSA-SHA512, ECDSA-SHA384, ECDSA-SHA512 |
+| Forbidden | everything in `fips-140-3` forbidden list, plus RSA-2048, ECDSA P-256, SHA-256-only sig |
+
+The `stig` preset is the strictest. It refuses the default
+RSA-2048 leaf algorithm, so the operator must override
+`--key-algorithm rsa-3072` or `ecdsa-p384` when picking it.
+
+## Forbidden everywhere (regardless of preset)
+
+The renderer always refuses to emit:
+
+- `sslVersions = ssl3` / `sslVersions = tls1.0` / `sslVersions = tls1.1`
+- `cipherSuite` containing NULL, EXPORT, anonymous-DH, or RC4
+- Keys with `MD5` or `SHA-1` signatures
+- RSA keys < 2048 bits
+- ECDSA curves not in NIST suite-B (no Brainpool, no Curve25519
+  for TLS — Splunk doesn't yet wire it through OpenSSL FIPS for
+  TLS use)
+
+The legacy `--allow-deprecated-tls` option fails closed. This skill no longer
+emits SSLv3 / TLS 1.0 / TLS 1.1 under any preset.
+
+## TLS 1.3
+
+Splunk Enterprise 10.4 documents TLS 1.3 and its separate
+`server.conf [tls1.3]` cipher/group policy. The renderer enables TLS 1.2 and
+TLS 1.3 for the default floor on 10.4+, or TLS 1.3 only when explicitly
+requested. `--tls-version-floor tls1.3` is rejected for older versions.

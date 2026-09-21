@@ -1,0 +1,93 @@
+# Splunk Observability Cloud — GCP Integration spec.
+#
+# Copy this file locally (e.g. template.local.yaml) and fill in non-secret values.
+# The skill reads the Splunk O11y token from --token-file (chmod 600).
+# GCP Service Account JSON key is read from --key-file (chmod 600).
+# WIF uses the official Splunk-generated gcp_wif_config.json via
+# --wif-config-file (mode 600). Do not construct or edit that document.
+# NEVER put any secret value in this file.
+
+api_version: splunk-observability-gcp-integration/v1
+
+# Splunk Observability Cloud realm.
+# Supported: us0 us1 us2 us3 eu0 eu1 eu2 au0 jp0 sg0
+realm: us1
+
+# Human-readable name for this integration in Splunk O11y.
+integration_name: production-gcp-org-1
+
+# ── Authentication ──────────────────────────────────────────────────────────
+authentication:
+  # Authentication mode:
+  #   service_account_key        — GCP Service Account JSON key (projectServiceKeys)
+  #   workload_identity_federation — Official Splunk-generated WIF config file
+  mode: service_account_key
+
+  # Only when mode=service_account_key.
+  # List of {project_id, key_file} pairs. key_file must be chmod 600.
+  # Do NOT put the key contents here — pass the file path.
+  project_service_keys:
+    - project_id: my-gcp-project
+      key_file: ""   # path to GCP SA JSON key file; chmod 600
+
+  # Only when mode=workload_identity_federation.
+  workload_identity_federation:
+    # File path only; contents are injected immediately before apply as compact
+    # JSON in workloadIdentityFederationConfig and are never rendered.
+    config_file: ""   # /secure/path/gcp_wif_config.json; exact filename, mode 600
+
+# ── Connection ────────────────────────────────────────────────────────────────
+connection:
+  poll_rate_seconds: 300       # 60..600 (wire pollRate is milliseconds; skill converts)
+  use_metric_source_project_for_quota: false  # If true, quota is charged to metric source project
+  import_gcp_metrics: true     # true = import GCP metrics; false = metadata only
+
+# ── Projects ─────────────────────────────────────────────────────────────────
+projects:
+  sync_mode: ALL_REACHABLE     # ALL_REACHABLE | SELECTED
+  selected_project_ids: []     # GCP project IDs when sync_mode=SELECTED
+
+# ── Services ──────────────────────────────────────────────────────────────────
+# See references/services-enum.json for the full 32-entry enum.
+# Set mode to all_built_in to subscribe to all built-in GCP services.
+services:
+  mode: all_built_in           # all_built_in | explicit
+  explicit: []                 # 32-entry enum values; only used when mode=explicit
+
+# ── Custom metric type domains ────────────────────────────────────────────────
+# Custom Cloud Monitoring metric type prefixes to import.
+custom_metric_type_domains: []
+
+# ── GCE label exclusion ───────────────────────────────────────────────────────
+# Exclude GCE instances by label key (no gcp_label_ prefix and no values).
+exclude_gce_instances_with_labels: []
+
+# ── Named token ───────────────────────────────────────────────────────────────
+# Splunk O11y org token name for this integration's data.
+# WARNING: Changing named_token destroys and re-creates the integration (ForceNew in Terraform).
+named_token: ""
+
+# ── Terraform output (generated for service_account_key only) ────────────────
+# The current upstream provider supports WIF/projects. This skill intentionally
+# generates WIF through its reviewed REST path and does not currently generate
+# the Terraform WIF resource.
+terraform_provider:
+  source: splunk-terraform/signalfx
+  version: "~> 9.0"
+
+# ── GCloud CLI render ─────────────────────────────────────────────────────────
+# Emit gcloud-cli/ source-repository automation (not bundled) for SA creation and role binding in SA-key mode only.
+# No WIF pool/provider/principal construction is generated.
+gcloud_cli_render: true
+
+# ── Multi-project ─────────────────────────────────────────────────────────────
+multi_project:
+  enabled: false
+
+# ── Cross-skill handoffs ──────────────────────────────────────────────────────
+# Set true to emit handoff driver source-repository automation (not bundled).
+handoffs:
+  splunk_ta_google_cloud: false  # Splunkbase 3088 — GCP log ingestion
+  gke_otel_collector: false      # splunk-observability-otel-collector-setup (GKE host telemetry)
+  dashboards: false              # splunk-observability-dashboard-builder
+  detectors: false               # splunk-observability-native-ops
