@@ -1,0 +1,114 @@
+# Galileo Platform Setup intake template.
+# Copy to template.local and fill in non-secret values only.
+api_version: galileo-platform-setup/v1
+
+galileo:
+  project_id: "galileo-project-id"
+  project_name: "customer-facing-ai"
+  log_stream_id: "galileo-log-stream-id"
+  log_stream: "production"
+  # Required intake. Ask the user for their Galileo instance URL before
+  # rendering, for example https://console.demo-v2.galileocloud.io/.
+  console_url: ""
+  # Required before apply. Tenants onboarded before 2026-08-07 use the legacy
+  # Galileo contract implemented here. Boundary/newer tenants are render-only
+  # until the Splunk Agent Observability API/SDK contract is implemented.
+  onboarding_date: ""
+  # Leave blank to derive from console_url, or set an explicit override.
+  api_base: ""
+  otel_endpoint: ""
+  lifecycle_manifest: "./galileo-platform-rendered/lifecycle/object-lifecycle-manifest.example.json"
+  dataset_dir: ""
+  prompt_manifest: ""
+  experiment_manifest: ""
+  # Experiment manifest items may set experiment_group or
+  # experiment_group_id. This requires Galileo Python SDK >=2.2.0.
+  protect_stage_manifest: ""
+  metrics: "correctness,completeness"
+  luna_scorer_map: "./galileo-platform-rendered/lifecycle/luna-scorer-map.example.json"
+  luna_list_only: true
+  luna_recompute: false
+  luna_strict: false
+  luna_recompute_limit: "100"
+  experiment_id: ""
+  metrics_testing_id: ""
+
+hec_export:
+  root_type: "trace"
+  export_format: "jsonl"
+  export_computed_metrics_only: false
+  include_code_metric_metadata: false
+  redact: true
+  since: ""
+  until: ""
+  cursor_file: "./galileo-platform-rendered/state/cursor.json"
+
+observability_controls:
+  # Inventory only. Create and attach controls through the Galileo console until
+  # a documented public control CRUD API is available.
+  inventory_file: "./galileo-platform-rendered/controls/control-intake.example.json"
+  export_root_type_for_evidence: "span"
+  expected_fields: "control_name,step,stage,execution,source,action,evaluator,selector_path,matched,confidence"
+
+multimodal:
+  enabled: true
+  input_modalities: "image,audio,document"
+  output_modalities: "image,audio,document,text"
+  capture_methods: "galileo_logger_external_url,galileo_logger_file_upload,langchain_handler"
+  quality_metrics: "visual_quality,visual_fidelity,interruption_detection"
+  # Splunk receives modality metadata, asset counts, safe MIME/dimension/duration
+  # fields, and metric results by default. Keep raw media, base64 payloads, and
+  # external media URLs out of Splunk unless the destination index is approved.
+  splunk_asset_policy: "metadata_only_no_raw_media"
+  allow_raw_media_in_splunk: false
+
+splunk:
+  platform: "enterprise"
+  hec_url: "https://splunk.example.com:8088/services/collector/event"
+  hec_token_name: "galileo_observe"
+  hec_allowed_indexes: "galileo"
+  index: "galileo"
+  source: "galileo"
+  sourcetype: "galileo:observe:json"
+  host: ""
+
+splunk_observability:
+  realm: "us0"
+  # Set true for Splunk Observability Cloud-only mode. This skips default
+  # Splunk Platform HEC/OTLP sections and omits Platform HEC helper wiring from
+  # the OTel Collector handoff.
+  o11y_only: false
+
+runtime:
+  service_name: "galileo-instrumented-app"
+  deployment_environment: "production"
+  target_dir: ""
+
+coding_agent:
+  # Galileo MCP does not automatically populate log streams. Use a Codex
+  # notify bridge for completed interactive turn logging.
+  codex_notify_handoff: true
+  codex_trace_name: "codex.turn"
+  codex_tags: "codex,codex-cli,turn-ended"
+  codex_duplicate_state_file: "~/.codex/log/codex-galileo-emitted-turns.json"
+  codex_notify_log_file: "~/.codex/log/codex-galileo-notify.log"
+
+otlp:
+  receiver_host: "otlp.example.com"
+  grpc_port: "4317"
+  http_port: "4318"
+
+collector:
+  cluster_name: "galileo-apps"
+
+kubernetes:
+  namespace: "default"
+  workload: ""
+
+secrets:
+  # File paths only. Do not put token values in this file.
+  galileo_api_key_file: "/tmp/galileo_api_key"
+  splunk_hec_token_file: "/tmp/splunk_hec_token"
+  o11y_token_file: "/tmp/splunk_o11y_token"
+  # The generic-alert relay uses a separate mode-0600 shared token file passed
+  # directly as --galileo-webhook-token-file; do not put its value here.
