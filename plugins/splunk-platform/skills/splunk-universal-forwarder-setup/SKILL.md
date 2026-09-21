@@ -1,0 +1,194 @@
+---
+name: splunk-universal-forwarder-setup
+description: >
+  Use when the user asks to install, upgrade, enroll, or check Universal Forwarders separately from full Splunk Enterprise host bootstrap or Agent Management server-class work. Bootstrap Splunk Universal Forwarder runtimes on Linux, macOS, and Windows, resolve official UF downloads, render first-class enrollment assets for deployment servers, static Enterprise indexers, or Splunk Cloud credentials packages, and validate installed forwarders.
+license: Apache-2.0
+compatibility: "Claude Code, GitHub Copilot, OpenAI Codex, Cursor, Gemini CLI"
+metadata:
+  product: splunk-platform
+  maturity: draft
+---
+
+# Splunk Universal Forwarder Setup
+
+## Prerequisites
+
+| Tool or access | Purpose | Verify |
+|---|---|---|
+| Bash and Python 3 | Run bundled setup and validation helpers | `bash --version && python3 --version` |
+| Required product/platform access | Inspect or configure the selected target | Complete the documented preflight |
+| Credential files for live modes | Keep secrets out of chat | Verify paths only |
+
+## Workflow Overview
+
+```text
+┌───────────┐   ┌───────────────┐   ┌───────────────┐   ┌─────────────────┐
+│ Preflight │ → │ Render/review │ → │ Apply/handoff │ → │ Validate evidence │
+└───────────┘   └───────────────┘   └───────────────┘   └─────────────────┘
+```
+
+## When to Activate
+
+- Install, upgrade, enroll, or check Universal Forwarders separately from full Splunk Enterprise host bootstrap or
+  Agent Management server-class work.
+- Preview and review the splunk universal forwarder setup workflow before any live apply phase.
+- Diagnose failed prerequisites, generated assets, configuration, or validation evidence.
+
+## Troubleshooting
+
+| Issue | Cause | Resolution |
+|---|---|---|
+| Preflight fails | A required tool or access path is missing | Resolve it before rendering or applying |
+| Rendered assets are incomplete | Required non-secret inputs are absent | Complete intake and render again |
+| Apply is blocked | Review, credentials, or explicit acceptance is missing | Use the documented handoff |
+| Validation is incomplete | Live evidence is unavailable | Record the gap and keep completion open |
+
+Bootstraps **Universal Forwarder runtime clients**. Use this skill for endpoint
+or server forwarders that should run the lightweight UF package, not a full
+Splunk Enterprise heavy forwarder.
+
+## Scope
+
+- Linux: local and SSH apply for `.rpm`, `.deb`, and `.tgz`; default
+  `SPLUNK_HOME=/opt/splunkforwarder`; default service user `splunkfwd`.
+- macOS: local and SSH apply for `.tgz`; default
+  `SPLUNK_HOME=/Applications/splunkforwarder`.
+- Windows: render an administrator-run PowerShell/MSI bootstrap script. WinRM
+  execution is out of scope in v1.
+- FreeBSD, Solaris, and AIX: recognized by latest-resolution metadata and smoke
+  checks, but install/apply is unsupported in v1.
+
+The skill intentionally delegates server classes and deployment apps to
+`splunk-agent-management-setup`. This workflow installs or upgrades the UF
+runtime and enrolls the client only.
+
+## Credential Rules
+
+Never ask for passwords in chat and never pass password values as argv or
+environment-variable prefixes.
+
+Use a local password file for first-start admin seeding and Splunk Cloud
+credentials-package installs:
+
+```bash
+bash portable local helper /tmp/uf_admin_password
+```
+
+Then pass only the file path:
+
+```bash
+--admin-password-file /tmp/uf_admin_password
+```
+
+Windows rendering follows the same rule. The PowerShell script installs MSI
+packages with `LAUNCHSPLUNK=0`, writes `user-seed.conf` from the password file
+before first start, and removes seed artifacts after startup. It never renders
+or runs `SPLUNKPASSWORD=...`.
+
+## Main Script
+
+```bash
+bash source-repository automation (not bundled) \
+  --phase render|download|install|enroll|status|all \
+  --target-os auto|linux|macos|windows|freebsd|solaris|aix \
+  --execution local|ssh|render \
+  --source auto|splunk-auth|remote|local \
+  --url latest|URL \
+  --file PATH \
+  --package-type auto|tgz|rpm|deb|msi|dmg|pkg|txz|p5p|tar-z
+```
+
+Useful additions:
+
+- `--target-arch auto|amd64|arm64|ppc64le|s390x|x64|x86|intel|universal2|freebsd13-amd64|freebsd14-amd64|sparc|powerpc`
+- `--allow-stale-latest`
+- `--output-dir PATH`
+- `--accept-forwarder-mutation` for a reviewed live install, upgrade, or
+  enrollment
+- `--dry-run --json`
+
+The default phase is `render`. It writes reviewable assets and does not install,
+upgrade, or enroll a host. Live Unix-like `install`, `enroll`, and `all` phases
+refuse to run unless `--accept-forwarder-mutation` is present. An `install`
+phase also covers upgrades of an existing Universal Forwarder. Render, dry-run,
+download, status, and Windows handoff paths do not require the acknowledgement.
+
+## Enrollment Modes
+
+- `--enroll none`: install or upgrade only.
+- `--enroll deployment-server --deployment-server HOST:PORT`: writes
+  `deploymentclient.conf` using the same client semantics as Agent Management.
+- `--enroll enterprise-indexers --server-list HOST:9997[,HOST:9997...]`:
+  writes `outputs.conf` with static load-balanced indexers and `useACK=true`.
+- `--enroll splunk-cloud --cloud-credentials-package PATH`: installs the
+  user-supplied `splunkclouduf.spl` package and restarts the forwarder.
+
+## Examples
+
+Linux install and deployment-server enrollment:
+
+```bash
+bash source-repository automation (not bundled) \
+  --phase all \
+  --accept-forwarder-mutation \
+  --target-os linux \
+  --source remote \
+  --url latest \
+  --enroll deployment-server \
+  --deployment-server ds01.example.com:8089 \
+  --client-name web01 \
+  --admin-password-file /tmp/uf_admin_password
+```
+
+Windows MSI handoff:
+
+```bash
+bash source-repository automation (not bundled) \
+  --phase render \
+  --target-os windows \
+  --execution render \
+  --source local \
+  --file /tmp/splunkforwarder.msi \
+  --service-user LocalSystem \
+  --enroll enterprise-indexers \
+  --server-list idx01.example.com:9997,idx02.example.com:9997 \
+  --admin-password-file C:\\Temp\\uf_admin_password.txt
+```
+
+Use `--service-user LocalSystem` only for a reviewed add-on requirement such as
+Splunk Stream packet capture. If `--admin-password-file` is omitted, the
+Windows handoff asks the MSI to generate a random admin password and removes
+the temporary installer logs that contain it; manage the forwarder through its
+deployment configuration rather than trying to recover that discarded secret.
+
+Latest-resolution smoke without downloading a package:
+
+```bash
+bash source-repository automation (not bundled) \
+  --target-os all \
+  --package-type all
+```
+
+## Validate
+
+```bash
+bash source-repository automation (not bundled) \
+  --target-os linux \
+  --execution ssh \
+  --enroll deployment-server
+```
+
+## Hand-off Contracts
+
+- **DS runtime** (bootstrap, `phoneHome` tuning, HA pair, client migration): see [`splunk-deployment-server-setup`](https://github.com/CiscoDevNet/skills/tree/main/skills/splunk-platform/splunk-deployment-server-setup). This skill handles UF enrollment; `splunk-deployment-server-setup` owns the DS runtime side.
+- **Server class authoring**: see [`splunk-agent-management-setup`](https://github.com/CiscoDevNet/skills/tree/main/skills/splunk-platform/splunk-agent-management-setup) for `serverclass.conf` and `deploymentclient.conf` rendering.
+
+## References
+
+- [reference.md](reference.md) for package matrix, phases, and operational notes
+- [template.example](template.example) for non-secret intake
+
+
+## Portability note
+
+This Cisco DevNet package preserves the source skill's operational guidance, references, templates, and assets. Source-repository `agents/openai.yaml` files and repository-coupled scripts/shared helpers are intentionally not bundled. Any omitted automation must be recreated with the target product's supported tools after read-only discovery, exact-target review, explicit approval, rollback preparation, and post-change validation. Keep secrets in local mode-0600 files and never paste them into chat, commands, or logs.
