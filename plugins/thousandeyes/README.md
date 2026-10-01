@@ -1,7 +1,5 @@
-# Cisco ThousandEyes plugin
+# Cisco ThousandEyes skills
 
-Reviewed ThousandEyes skills belong in `skills/<skill-name>/SKILL.md`. Each
-skill directory must remain self-contained and mirror its canonical entry
-under `../../skills/thousandeyes/`.
+Scope: Cisco ThousandEyes, Meraki Assurance, and Observability Cloud integrations.
 
-This scaffold intentionally includes no placeholder skill.
+Each child directory is a self-contained Agent Skill with its own `SKILL.md` and any included references, templates, or assets.
