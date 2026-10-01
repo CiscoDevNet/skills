@@ -1,0 +1,200 @@
+# Splunk Cloud ACS Admin Reference
+
+## Table of contents
+
+- [Research Basis](#research-basis)
+- [ACS Surface Matrix](#acs-surface-matrix)
+- [Admin Plan JSON](#admin-plan-json)
+- [Allowlist Feature Surface](#allowlist-feature-surface)
+- [Private Connectivity Notes](#private-connectivity-notes)
+- [Out of Scope](#out-of-scope)
+- [Splunk 10.4 enterprise deployment notes](#splunk-104-enterprise-deployment-notes)
+
+## Research Basis
+
+This skill follows current Splunk Cloud ACS documentation and the local
+`acs` CLI help output from ACS CLI 2.22.0.
+
+Official references:
+
+- ACS overview:
+  <https://help.splunk.com/en/splunk-cloud-platform/administer/admin-config-service-manual/10.5.2605/welcome-to-the-admin-config-service-acs/about-the-admin-config-service-acs-api>
+- ACS API endpoint reference:
+  <https://help.splunk.com/en/splunk-cloud-platform/administer/admin-config-service-manual/10.5.2605/admin-config-service-acs-api-endpoint-reference/admin-config-service-acs-api-endpoint-reference>
+- ACS CLI:
+  <https://help.splunk.com/en/splunk-cloud-platform/administer/admin-config-service-manual/10.5.2605/administer-splunk-cloud-platform-using-the-admin-config-service-acs-cli/administer-splunk-cloud-platform-using-the-acs-cli>
+- IP allow lists:
+  <https://help.splunk.com/en/splunk-cloud-platform/administer/admin-config-service-manual/10.5.2605/administer-splunk-cloud-platform-using-the-admin-config-service-acs-api/configure-ip-allowlists-for-splunk-cloud-platform>
+- Outbound ports:
+  <https://help.splunk.com/en/splunk-cloud-platform/administer/admin-config-service-manual/10.5.2605/administer-splunk-cloud-platform-using-the-admin-config-service-acs-api/configure-outbound-ports-for-splunk-cloud-platform>
+- Private connectivity:
+  <https://help.splunk.com/en/splunk-cloud-platform/administer/manage-users-and-security/10.5.2605/private-connectivity/enable-private-connectivity>
+- Limits:
+  <https://help.splunk.com/en/splunk-cloud-platform/administer/admin-config-service-manual/10.5.2605/administer-splunk-cloud-platform-using-the-admin-config-service-acs-api/manage-limits.conf-configurations-in-splunk-cloud-platform>
+- ACS release notes:
+  <https://help.splunk.com/en/splunk-cloud-platform/release-notes/10.5.2605/splunk-cloud-platform-release-notes/admin-configuration-service>
+- Splunk Cloud Platform Terraform Provider (`splunk/scp`):
+  <https://registry.terraform.io/providers/splunk/scp/latest>
+
+## ACS Surface Matrix
+
+| Module | CLI / API surface | Automation stance |
+|--------|-------------------|-------------------|
+| IP allowlists | `acs ip-allowlist`, `acs ip-allowlist-v6` | Full render, preflight, apply, audit for all seven features |
+| Indexes | `acs indexes` | Guarded create/update; DDSS and DDAA fields supported |
+| DDSS self-storage | `acs indexes self-storage-locations` | Guarded create; policy/prefix/service-account reads through inventory |
+| HEC tokens | `acs hec-token` | Guarded create/update without direct token values |
+| Users | `acs users` | Inventory and reviewed handoff only when password material is involved |
+| Roles | `acs roles` | Guarded create/update with `fsh_manage` acknowledgement validation |
+| Capabilities | `acs capabilities list` | Inventory/read-only |
+| App permissions | `acs permissions apps` | Guarded update; bulk update remains a reviewed handoff |
+| Private connectivity | `/private-connectivity/eligibility`, `/private-connectivity/endpoints` | REST helper; API-only in some CLI releases |
+| Outbound ports | `acs outbound-port`, `acs outbound-port-v6` | Guarded create for IPv4/IPv6 destinations |
+| Limits | `acs limits` | Guarded set, read-only list |
+| Maintenance windows | `acs maintenance-windows schedules`, `acs maintenance-windows preferences` | Read schedules/audit; guarded preferences update by JSON file |
+| Restarts | `acs restart` | Guarded restart-current-stack or restart-if-required |
+| Apps | `acs apps` | Inventory/read-only here; installs remain in `splunk-app-install` |
+| Auth tokens | `acs token` | Inventory/read-only here; token creation remains operator-driven |
+| Deployment tasks | `acs deployment` | Status/retry visibility; retry remains operator-driven |
+| License | `acs license` | Inventory/read-only |
+| Observability pairing | `acs observability` | Command-surface check and handoff to `splunk-observability-cloud-integration-setup` for Unified Identity / centralized RBAC guardrails |
+
+## Admin Plan JSON
+
+The optional `--admin-plan-file` is JSON, not YAML. Keep credentials and token
+values out of it. Supported top-level keys:
+
+```json
+{
+  "indexes": [
+    {
+      "name": "cisco_netops",
+      "datatype": "event",
+      "searchableDays": 90,
+      "maxDataSizeMB": 0,
+      "selfStorageBucketPath": "s3://bucket/prefix",
+      "splunkArchivalRetentionDays": 365
+    }
+  ],
+  "hec_tokens": [
+    {
+      "name": "cisco_netops_hec",
+      "defaultIndex": "cisco_netops",
+      "allowedIndexes": ["cisco_netops"],
+      "defaultSourceType": "cisco:test",
+      "useAck": false,
+      "disabled": false
+    }
+  ],
+  "roles": [
+    {
+      "name": "cisco_netops_role",
+      "capabilities": ["search"],
+      "srchIndexesAllowed": ["cisco_netops"],
+      "srchIndexesDefault": ["cisco_netops"]
+    }
+  ],
+  "users": [
+    {
+      "name": "cisco_netops_user",
+      "roles": ["cisco_netops_role"],
+      "passwordFile": "/path/to/local/password-file"
+    }
+  ],
+  "app_permissions": [
+    {
+      "name": "search",
+      "read": ["user", "power", "admin"],
+      "write": ["admin"]
+    }
+  ],
+  "outbound_ports": [
+    {
+      "port": 8089,
+      "family": "ipv4",
+      "subnets": ["198.51.100.10/32"]
+    }
+  ],
+  "ddss_self_storage_locations": [
+    {
+      "bucketName": "bucket",
+      "title": "Production DDSS archive",
+      "folder": "splunk"
+    }
+  ],
+  "limits": [
+    {
+      "stanza": "subsearch",
+      "settings": {
+        "maxout": "50000"
+      }
+    }
+  ],
+  "maintenance_windows": {
+    "preferencesFile": "/path/to/change-freezes.json"
+  },
+  "private_connectivity": [
+    {
+      "customerAccountIds": ["112233445566"],
+      "features": ["ingest", "search"]
+    }
+  ],
+  "restarts": {
+    "restartIfRequired": true
+  }
+}
+```
+
+## Allowlist Feature Surface
+
+| Feature | Port | IPv4 default | Notes |
+|---------|------|--------------|-------|
+| `acs` | n/a | open (`0.0.0.0/0`) | Restrict carefully; controls ACS API, CLI, and Terraform provider access |
+| `search-api` | 8089 | closed | REST/SDK access to search heads |
+| `hec` | 443 | open | HTTP Event Collector data ingestion |
+| `s2s` | 9997 | open | Splunk-to-Splunk forwarder traffic |
+| `search-ui` | 80/443 | open, except regulated stacks can be closed | Search head web UI |
+| `idm-api` | 8089 | open | Inputs Data Manager API |
+| `idm-ui` | 443 | open | Inputs Data Manager UI |
+
+AWS deployments enforce 200 subnets per feature and a 230-subnet cap for each
+allowlist group. GCP deployments enforce 200 subnets per feature. The renderer
+counts IPv4 and IPv6 together for these guards.
+
+## Private Connectivity Notes
+
+The ACS API exposes private connectivity eligibility and endpoint creation at:
+
+- `GET /{stack}/adminconfig/v2/private-connectivity/eligibility`
+- `POST /{stack}/adminconfig/v2/private-connectivity/endpoints`
+
+The POST body includes `customerAccountIds` and the `feature` array, where
+supported features are `ingest` and `search`; an empty list enables both
+features per Splunk documentation. The rendered
+`private-connectivity-rest.sh` uses `STACK_TOKEN` as a bearer token and stores
+request bodies in temporary files so tokens do not appear in process argv.
+
+FedRAMP Moderate customers need a Splunk Support case for the documented
+private-connectivity enablement steps. FedRAMP High allowlist administration is
+also support-managed.
+
+## Out of Scope
+
+- Splunkbase app installation and private app upload workflows. Use
+  [`splunk-app-install`](https://github.com/CiscoDevNet/skills/tree/main/skills/splunk-platform/splunk-app-install).
+- End-to-end HEC service design for Enterprise and Cloud. Use
+  [`splunk-hec-service-setup`](https://github.com/CiscoDevNet/skills/tree/main/skills/splunk-platform/splunk-hec-service-setup).
+- Non-Cloud restarts and cluster-aware Enterprise restarts. Use
+  [`splunk-platform-restart-orchestrator`](https://github.com/CiscoDevNet/skills/tree/main/skills/splunk-platform/splunk-platform-restart-orchestrator).
+- End-to-end Observability Cloud pairing, Unified Identity, and centralized
+  RBAC setup. Use
+  [`splunk-observability-cloud-integration-setup`](https://github.com/CiscoDevNet/skills/tree/main/skills/splunk-observability-cloud/splunk-observability-cloud-integration-setup).
+
+## Splunk 10.4 enterprise deployment notes
+
+For Splunk Enterprise `10.4.1` and Splunk Cloud Platform `10.5.2605` planning,
+read this skill alongside
+[`portable local reference`](#portability-note),
+the prose companion to the
+[`portable local reference`](#portability-note)
+version contract.
