@@ -1,0 +1,89 @@
+# Splunk Observability Isovalent Integration Reference
+
+## Sources of truth
+
+- [Isovalent Splunk O11y reference implementation](https://github.com/chambear2809/isovalent_splunk_o11y) — `examples/splunk-otel-isovalent.yaml`, `examples/Cilium by Isovalent.json`, and `examples/Hubble by Isovalent.json`. **Do not** copy from `values/*.yaml` in that repository; treat those deployment values as potentially secret-bearing and use only the dashboard files under `examples/`.
+- [Splunk Platform path notes](references/splunk-platform-paths.md) and [troubleshooting guidance](references/troubleshooting.md) — repository-local records of the production-derived overlay requirements.
+- Splunk Workshop: `splunk.github.io/observability-workshop/en/scenarios/isovalent-cilium-integration/`.
+- Splunk blog: `splunk.com/en_us/blog/security/splunking-isovalent-data.html` (Splunk Threat Research Team, 2026-02-02).
+- Splunk Platform sourcetype: `cisco:isovalent` (broad), `cisco:isovalent:processExec` (specific to Tetragon process exec events).
+
+## Rendered layout
+
+By default, assets are written under `splunk-observability-isovalent-rendered/`:
+
+- `splunk-otel-overlay/values.overlay.yaml` — overlay for the base collector values.
+- `dashboards/<name>.json` — token-scrubbed re-exports (when `--dashboards-source` is set; otherwise a README placeholder).
+- `dashboards/README.md` — placeholder when no source provided.
+- `detectors/<name>.yaml` — starter detector specs for `splunk-observability-native-ops`.
+- `source-repository automation (not bundled)` — emits the `splunk-observability-otel-collector-setup` invocation + the `yq` deep-merge command.
+- `source-repository automation (not bundled)` — emits the `splunk-hec-service-setup` invocation.
+- `source-repository automation (not bundled)` — emits the `cisco-security-cloud-setup` invocation with `PRODUCT=isovalent`.
+- `source-repository automation (not bundled)` — emits the `splunk-observability-dashboard-builder` invocation.
+- `source-repository automation (not bundled)` — emits the `splunk-observability-native-ops` invocation.
+- `source-repository automation (not bundled)` — token-scrub helper used both at render time and validation time.
+- `metadata.json` — non-secret plan summary.
+
+## Setup modes
+
+- `--render` — render overlay + handoff source-repository automation (not bundled) (default).
+- `--validate` — run static validation against an already-rendered output directory.
+- `--dry-run` — show the plan without writing.
+- `--json` — emit JSON dry-run output.
+- `--explain` — print plan in plain English.
+
+## Required values
+
+`--spec PATH` (defaults to `template.example`).
+
+`--realm`, `--cluster-name`, `--distribution` can be supplied either via the spec (preferred) or on the command line (override).
+
+## OTel collector overlay
+
+Seven Prometheus scrape jobs (toggle each via spec.scrape):
+
+| Job name | Pod label | Port |
+|----------|-----------|------|
+| `prometheus/isovalent_cilium` | `k8s-app=cilium` | 9962 |
+| `prometheus/isovalent_hubble` | `k8s-app=cilium` (same pod) | 9965 |
+| `prometheus/isovalent_envoy` | `k8s-app=cilium-envoy` | 9964 |
+| `prometheus/isovalent_operator` | `io.cilium/app=operator` | 9963 |
+| `prometheus/isovalent_tetragon` | `app.kubernetes.io/name=tetragon` | 2112 |
+| `prometheus/isovalent_tetragon_operator` | `app.kubernetes.io/name=tetragon-operator` | 2113 |
+| `prometheus/isovalent_dnsproxy` (optional) | `k8s-app=cilium-dnsproxy` | 9967 |
+
+Plus `kubeletstats` (with `insecure_skip_verify: true` for OpenShift), `hostmetrics`, `otlp`.
+
+The metrics pipeline applies the `filter/includemetrics` strict allow-list — only series in the list are forwarded to Splunk Observability Cloud. Extend the allow-list via `spec.metric_allowlist.extra`.
+
+## Splunk Platform logs path
+
+Default: file-based via OTel filelog receiver. Renders three coordinated blocks (per `references/tetragon-hostpath-coordination.md`):
+
+1. `agent.extraVolumes` + `agent.extraVolumeMounts` mounting `/var/run/cilium/tetragon` from the host.
+2. `logsCollection.extraFileLogs.filelog/tetragon` reading `/var/run/cilium/tetragon/*.log` with sourcetype `cisco:isovalent`, index `cisco_isovalent`.
+3. `splunkPlatform.logsEnabled: true` and HEC endpoint plumbing.
+
+Alternatives:
+
+- `--export-mode stdout` — Tetragon stdout + container log collection. Useful when SCC/PSP blocks hostPath mounts.
+- `--legacy-fluentd-hec` — fluentd `splunk_hec` block. **DEPRECATED** (`fluent-plugin-splunk-hec` archived 2025-06-24). Prominent warning in the rendered metadata.
+
+## Secret handling
+
+- `--o11y-token-file` — Splunk Observability Org access token (passed through to base collector at apply time; never written into the overlay).
+- `--platform-hec-token-file` — Splunk Platform HEC token (or `--render-platform-hec-helper` to delegate provisioning to `splunk-hec-service-setup`).
+
+Rejected direct flags: `--access-token`, `--token`, `--bearer-token`, `--api-token`, `--o11y-token`, `--sf-token`, `--platform-hec-token`, `--hec-token`. Each error message points at the matching `--*-file` flag.
+
+`--apply` updates an existing Splunk OTel Collector Helm release. The rendered helper discovers the release namespace from Helm when `collector.namespace` is blank, pins the currently installed chart version when `collector.chart_version` is blank, preserves existing gateway/operator topology unless explicitly disabled in the spec, passes the O11y token with `--set-file`, preserves live OBI eBPF ConfigMap data when OBI is installed, reclaims known Helm ConfigMap fields that were previously patched with `kubectl`, normalizes legacy `otlphttp/...` component names in merged release values to the chart's `otlp_http/...` spelling when chart compatibility requires it, and runs Helm with `--force-conflicts` for server-side apply conflict recovery.
+
+## Hand-offs
+
+- Splunk OTel Collector base install: [splunk-observability-otel-collector-setup](https://github.com/CiscoDevNet/skills/tree/main/skills/splunk-observability-cloud/splunk-observability-otel-collector-setup) (rendered command in `handoff-base-collector.sh`).
+- Splunk Platform HEC token: [splunk-hec-service-setup](https://github.com/CiscoDevNet/skills/tree/main/skills/splunk-platform/splunk-hec-service-setup) (rendered command in `handoff-hec-token.sh`).
+- Splunk Platform Tetragon log ingestion: [cisco-security-cloud-setup](https://github.com/CiscoDevNet/skills/tree/main/skills/splunk-platform/cisco-security-cloud-setup) with `PRODUCT=isovalent`.
+- Dashboards: [splunk-observability-dashboard-builder](https://github.com/CiscoDevNet/skills/tree/main/skills/splunk-observability-cloud/splunk-observability-dashboard-builder).
+- Detectors: [splunk-observability-native-ops](https://github.com/CiscoDevNet/skills/tree/main/skills/splunk-observability-cloud/splunk-observability-native-ops).
+
+See `references/collector-overlay.md`, `splunk-platform-paths.md`, `tetragon-hostpath-coordination.md`, `sourcetypes.md`, `dashboards-catalog.md`, and `troubleshooting.md` for the deep-dive annexes.

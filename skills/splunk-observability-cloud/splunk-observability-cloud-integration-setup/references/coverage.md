@@ -1,0 +1,118 @@
+# Coverage Matrix
+
+## Table of contents
+
+- [Coverage Values](#coverage-values)
+- [Cloud Target Coverage](#cloud-target-coverage)
+- [Enterprise Target Coverage](#enterprise-target-coverage)
+- [Out of Scope](#out-of-scope)
+
+Per-section support boundary for the Splunk Platform <-> Splunk Observability
+Cloud integration. Every spec section emits one of the coverage values below.
+
+## Coverage Values
+
+- `api_apply` — a documented public API supports create / update / delete or
+  validate; the skill renders the request and applies it under `--apply`.
+- `api_validate` — a documented public API supports a read-only operation or
+  mutation readback. The coverage note states where that read is implemented.
+- `deeplink` — UI-only; the skill renders a deterministic Splunk or
+  Observability UI link.
+- `handoff` — an operator or cross-skill action remains; the skill emits the
+  reviewed instructions or a delegating script (`splunk-app-install`,
+  `splunk-cloud-acs-admin-setup`, `splunk-itsi-config`, ...).
+- `install_apply` — the skill installs or configures a Splunk-side companion
+  app or saved search via Splunkbase + REST.
+- `not_applicable` — the section does not apply to the chosen target (UID on
+  Splunk Enterprise, Discover-app Configurations on SCP < 10.1.2507, etc.).
+
+## Cloud Target Coverage
+
+| Section                          | Coverage           | Notes                                                                              |
+| -------------------------------- | ------------------ | ---------------------------------------------------------------------------------- |
+| `prerequisites`                  | `handoff`          | Static realm/spec validation only; live stack version and operator RBAC require preflight. |
+| `token_auth`                     | `api_apply`        | `POST /services/admin/token-auth/tokens_auth -d disabled=false`.                   |
+| `pairing` (UID)                  | `api_apply`        | ACS REST pairing POST plus status-by-ID GET polling.                               |
+| `pairing` (SA)                   | `api_apply`        | Discover-app Access tokens REST tab write.                                         |
+| `pairing` multi-org              | `handoff`          | Requires a distinct validated token file per org; current single-token CLI fails closed. |
+| `pairing` multi-org default      | `deeplink`         | After per-org pairing, use Discover app > Configurations > 3-dot menu > Make Default. |
+| `centralized_rbac.capabilities`  | `api_apply`        | `acs observability enable-capabilities`.                                           |
+| `centralized_rbac.cutover`       | `handoff`          | No safe token-file transport; live apply fails before mutation.                    |
+| `centralized_rbac.o11y_access`   | `api_apply`        | Splunk authorize REST role create; downstream role assignment remains handoff.     |
+| `related_content_capabilities`   | `handoff`          | Exact role/capability handoff; safe merge is not automated.                        |
+| `discover_app.related_discovery` | `api_apply`        | Discover app setup REST (Related Content discovery toggle).                        |
+| `discover_app.test`              | `deeplink`         | "Test now" UI button only.                                                         |
+| `discover_app.field_aliasing`    | `api_apply`        | Discover app setup REST (Auto Field Mapping toggle + alias write).                 |
+| `discover_app.ui_updates`        | `api_apply`        | Discover app setup REST (Automatic UI updates toggle).                             |
+| `discover_app.access_tokens`    | `api_validate`     | Mutation is owned exclusively by service-account `pairing`; Discover avoids duplicate writes. |
+| `discover_app.read_permission`  | `api_apply`        | Splunk apps REST (`/services/apps/local/<app>/permissions`).                       |
+| `log_observer_connect.user`     | `api_apply`        | Splunk users REST (create + role assign).                                          |
+| `log_observer_connect.role`     | `api_apply`        | Splunk authorize REST (role create with caps + indexes + limits).                  |
+| `log_observer_connect.workload` | `api_apply`        | Splunk workload-management REST (workload rule create).                            |
+| `log_observer_connect.allowlist` | `handoff`          | Delegates to `splunk-cloud-acs-admin-setup --features search-api`.             |
+| `log_observer_connect.wizard`   | `deeplink`         | O11y > Settings > Log Observer connections > Add new connection.                   |
+| `dashboard_studio_o11y.default` | `handoff`          | Rendered review requirement; no live default-connection read is implemented here. |
+| `dashboard_studio_o11y.sample`  | `handoff`          | Sample JSON only; publish through `splunk-dashboard-studio-setup`.                  |
+| `sim_addon.install`             | `handoff`          | Delegates to `splunk-app-install --source splunkbase --app-id 5247`.               |
+| `sim_addon.index`               | `api_apply`        | Splunk management REST ensures and reads back a metrics index.                     |
+| `sim_addon.account`             | `api_apply`        | SIM Add-on UCC custom REST handler (account create + check connection + enable).   |
+| `sim_addon.modular_inputs`      | `api_apply`        | SIM Add-on UCC custom REST handler (modular input create with curated SignalFlow). |
+| `sim_addon.victoria_hec`        | `handoff`          | Delegates to `splunk-cloud-acs-admin-setup --features hec`.                    |
+| `sim_addon.itsi_pack`           | `handoff`          | Delegates to `splunk-itsi-config` for the Content Pack for Splunk Observability.   |
+
+## Enterprise Target Coverage
+
+| Section                          | Coverage           | Notes                                                                              |
+| -------------------------------- | ------------------ | ---------------------------------------------------------------------------------- |
+| `prerequisites`                  | `handoff`          | Static spec validation only; live version and role checks require operator preflight. |
+| `token_auth`                     | `api_apply`        | Same REST flip as Cloud.                                                           |
+| `pairing` (UID)                  | `not_applicable`   | UID requires Splunk Cloud Platform.                                                |
+| `pairing` (SA)                   | `not_applicable`   | Platform/O11y pairing is not a Splunk Enterprise workflow.                         |
+| `pairing` multi-org default      | `not_applicable`   | Platform/O11y pairing is not a Splunk Enterprise workflow.                         |
+| `centralized_rbac.*`             | `not_applicable`   | ACS observability commands not available on Enterprise.                            |
+| `related_content_capabilities`   | `handoff`          | Exact role/capability handoff; safe merge is not automated.                        |
+| `discover_app.*`                 | `not_applicable`   | Configurations REST surface is Splunk Cloud Platform only (10.1.2507+).            |
+| `log_observer_connect.user`     | `api_apply`        | Same Splunk users REST as Cloud.                                                   |
+| `log_observer_connect.role`     | `api_apply`        | Same Splunk authorize REST as Cloud.                                               |
+| `log_observer_connect.workload` | `api_apply`        | Same workload-management REST as Cloud.                                            |
+| `log_observer_connect.allowlist` | `handoff`          | Render-only IP-list reminder; SE customers manage their own firewall rules.        |
+| `log_observer_connect.tls_cert` | `handoff`          | SE TLS-certificate extraction helper (first cert in chain) + paste deeplink.       |
+| `dashboard_studio_o11y.default` | `handoff`          | Rendered review requirement; no live default-connection read is implemented here. |
+| `dashboard_studio_o11y.sample`  | `handoff`          | Sample JSON only; publish through `splunk-dashboard-studio-setup`.                  |
+| `sim_addon.install`             | `handoff`          | Delegates to `splunk-app-install --source splunkbase --app-id 5247`.               |
+| `sim_addon.index`               | `api_apply`        | Splunk indexes REST.                                                               |
+| `sim_addon.account`             | `api_apply`        | SIM Add-on UCC custom REST handler.                                                |
+| `sim_addon.modular_inputs`      | `api_apply`        | SIM Add-on UCC custom REST handler.                                                |
+| `sim_addon.victoria_hec`        | `not_applicable`   | Victoria-stack carve-out is Splunk Cloud Platform only.                            |
+| `sim_addon.itsi_pack`           | `handoff`          | Delegates to `splunk-itsi-config`.                                                 |
+
+## Out of Scope
+
+These adjacent surfaces are intentionally NOT in this skill:
+
+- Splunk Add-on for OpenTelemetry Collector (Splunkbase 7125) — handled by
+  `splunk-observability-otel-collector-setup`. That skill manages OTel
+  collector deployment on Kubernetes / Linux; this skill only orchestrates
+  the platform-side pairing and SIM streaming.
+- Splunk Synthetic Monitoring Add-on (Splunkbase `5608`) — archived since
+  2022 and not listed for Splunk 10.5. It is a migration reference only: do
+  not install it on a new or upgraded 10.5 stack. Use SIM Add-on streams for
+  in-platform metrics and native Splunk Observability Cloud Synthetics for
+  browser/API tests. The shared registry records it as unsupported for the
+  10.5 compatibility target.
+- Splunk On-Call wiring — handled by `splunk-oncall-setup`. That skill owns
+  the API-id / X-VO-Api-Key flow, REST endpoint integration, and the
+  Splunk-side Splunkbase 3546 / 4886 / 5863 apps.
+- ITSI Content Pack content management (services, KPIs, entities) — handled
+  by `splunk-itsi-config`. This skill only renders the install handoff.
+- Splunk Observability Cloud dashboards / detectors / Synthetics tests / RUM
+  workflows / Log Observer queries — handled by
+  `splunk-observability-dashboard-builder` and
+  `splunk-observability-native-ops`. This skill only renders the in-platform
+  navigation surfaces (Discover app + Related Content + Dashboard Studio
+  metrics + sim SPL).
+- AppDynamics Log Observer Connect — separate AppDynamics SaaS workflow;
+  outside the scope of the Splunk Platform <-> O11y pairing.
+- Splunk Cloud Platform IP allowlist administration — handled by
+  `splunk-cloud-acs-admin-setup`. This skill renders the deltas it
+  needs (LOC realm IPs and Victoria-stack HEC) and hands off there.
