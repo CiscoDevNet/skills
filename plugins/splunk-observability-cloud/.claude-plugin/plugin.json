@@ -1,0 +1,19 @@
+{
+  "name": "splunk-observability-cloud",
+  "displayName": "Splunk Observability Cloud",
+  "description": "Operational skills for Splunk Observability Cloud, Galileo, Lemonade, and telemetry integrations.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Cisco DevNet",
+    "url": "https://developer.cisco.com/"
+  },
+  "homepage": "https://github.com/CiscoDevNet/skills/tree/main/skills/splunk-observability-cloud",
+  "repository": "https://github.com/CiscoDevNet/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "splunk",
+    "splunk-observability-cloud",
+    "agent-skills",
+    "observability"
+  ]
+}
