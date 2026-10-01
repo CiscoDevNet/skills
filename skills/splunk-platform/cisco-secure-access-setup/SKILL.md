@@ -1,0 +1,272 @@
+---
+name: cisco-secure-access-setup
+description: >
+  Use when configuring Cisco Secure Access accounts, event collection, indexes, or Splunk dashboards.
+license: Apache-2.0
+compatibility: "Claude Code, GitHub Copilot, OpenAI Codex, Cursor, Gemini CLI"
+metadata:
+  product: splunk-platform
+  maturity: draft
+---
+
+# Cisco Secure Access Setup
+
+## Prerequisites
+
+| Tool or access | Purpose | Verify |
+|---|---|---|
+| Bash, `curl`, and `jq` | Run setup and REST configuration helpers | `command -v bash curl jq` |
+| Splunk administrative access | Install app IDs 5558/7569 and configure indexes | Confirm target-tier access |
+| Secure Access access | Configure the event flow | Record the organization ID |
+
+## Workflow Overview
+
+```text
+┌───────────┐   ┌──────────────────┐   ┌───────────────────┐   ┌────────────────────┐
+│ Preflight │ → │ Install app + TA │ → │ Configure account │ → │ Validate dashboards │
+└───────────┘   └──────────────────┘   └───────────────────┘   └────────────────────┘
+```
+
+## When to Activate
+
+- Install or configure the Cisco Secure Access Splunk app and event add-on.
+- Provision investigate, private-app, or app-discovery indexes.
+- Diagnose missing Secure Access events or empty dashboards.
+
+## Scope
+
+This skill configures documented Splunk app and account surfaces. It does not
+change Secure Access policy, collect credentials in chat, or claim completion
+until event ingestion and shipped dashboards are validated.
+
+## Examples
+
+Install the app and required event add-on:
+
+```bash
+bash source-repository automation (not bundled) --install
+```
+
+Expected output: the reviewed package and index plan is applied or a clear
+manual handoff is emitted for the target Splunk topology.
+
+Validate a configured organization account:
+
+```bash
+bash source-repository automation (not bundled) \
+  --completion --org-id example-org-id
+```
+
+Expected output: package, account, index, event, macro, and dashboard checks
+report `[PASS]`; incomplete collection exits nonzero.
+
+## Troubleshooting
+
+| Issue | Cause | Resolution |
+|---|---|---|
+| Required add-on is absent | Only the visualization app was installed | Install and validate both package IDs |
+| Account fails | ID or authorization is invalid | Verify ID and credential file |
+| Events land in the wrong index | App settings and input differ | Align the input with the rendered index plan |
+| Dashboards are empty | Events or package macros are missing | Validate ingestion before adjusting dashboard settings |
+
+## TA Completion Gate
+
+For every TA/add-on or dashboard companion run, satisfy the shared
+[TA completion gate](#portability-note): configure and enable the
+data ingest path owned by this skill or its required companion, validate events
+or metrics in the target indexes/source types, and verify any
+pre-built/package-shipped dashboards are visible, macro-aligned, and returning
+data. If the package ships no dashboards, record that evidence explicitly and
+hand off dashboard use to the consuming app, ES/ITSI/ARI content, or readiness
+doctor.
+
+Automates installation and core account configuration of the **Cisco Secure
+Access App for Splunk** (`cisco-cloud-security`) plus the required **Cisco
+Secure Access Add-on for Splunk** (`TA-cisco-cloud-security-addon`).
+
+## Package Model
+
+**Pull from Splunkbase first (latest version), fall back to `splunk-ta/`.**
+Use the setup script with `--install` to install add-on ID `7569` and app ID
+`5558`. The shared installer falls back to local packages
+`cisco-secure-access-add-on-for-splunk_*` and
+`cisco-secure-access-app-for-splunk_*` when needed.
+
+The app hosts dashboards and account/settings endpoints. The add-on is required
+for Secure Access, Umbrella, and Cloudlock event-log ingestion and index
+settings.
+
+## Agent Behavior — Credentials
+
+**The agent must NEVER ask for API keys, secrets, or tokens in chat.**
+
+Splunk credentials are read from the project-root `credentials` file (falls
+back to `~/.splunk/credentials`). If neither exists, guide the user to create
+it:
+
+```bash
+bash portable local helper
+```
+
+For Secure Access API secrets, instruct the user to write them to temp files:
+
+```bash
+bash portable local helper /tmp/secure_access_api_key
+bash portable local helper /tmp/secure_access_api_secret
+```
+
+## Environment
+
+This app supports standalone and distributed deployments and can be used on
+Splunk Enterprise or Splunk Cloud.
+
+| Item | Value |
+|------|-------|
+| Search-tier API | `SPLUNK_SEARCH_API_URI` env var (legacy alias: `SPLUNK_URI`) |
+| Cloud stack | `SPLUNK_CLOUD_STACK` for Cloud installs |
+| App name | `cisco-cloud-security` |
+| Add-on name | `TA-cisco-cloud-security-addon` |
+| Splunkbase IDs | `5558` app, `7569` add-on |
+| Credentials | Project-root `credentials` file (falls back to `~/.splunk/credentials`) |
+| Skill source-repository automation (not bundled) | `source-repository automation (not bundled)/` |
+
+## Setup Workflow
+
+### Step 1: Install The Add-On And App
+
+```bash
+bash source-repository automation (not bundled) --install
+```
+
+### Step 2: Configure One Org Account
+
+```bash
+bash source-repository automation (not bundled) \
+  --org-id example-org-id \
+  --base-url https://api.us.security.cisco.com \
+  --timezone UTC \
+  --storage-region us \
+  --api-key-file /tmp/secure_access_api_key \
+  --api-secret-file /tmp/secure_access_api_secret \
+  --investigate-index cisco_secure_access_investigate \
+  --privateapp-index cisco_secure_access_private_apps \
+  --appdiscovery-index cisco_secure_access_app_discovery
+```
+
+The account configurator can auto-create the supplied indexes. The app’s own
+`org_accounts` endpoint provisions the Private Apps and App Discovery modular
+inputs when those indexes are provided.
+
+If you need to discover the org ID first:
+
+```bash
+bash source-repository automation (not bundled) \
+  --discover-org-id \
+  --base-url https://api.us.security.cisco.com \
+  --api-key-file /tmp/secure_access_api_key \
+  --api-secret-file /tmp/secure_access_api_secret
+```
+
+### Step 3: Configure App Settings For Dashboard Readiness
+
+```bash
+bash source-repository automation (not bundled) \
+  --org-id example-org-id \
+  --bootstrap-roles \
+  --accept-terms \
+  --apply-dashboard-defaults
+```
+
+You can also configure optional dashboard-side settings such as:
+
+- Cloudlock settings
+- selected destination lists
+- S3-backed dashboard indexes
+- explicit refresh rate overrides
+
+### Step 4: Validate
+
+```bash
+bash source-repository automation (not bundled) --completion
+```
+
+To validate one specific org:
+
+```bash
+bash source-repository automation (not bundled) --completion --org-id example-org-id
+```
+
+## Dashboards
+
+The app ships dashboards in the package. They appear in Splunk Web
+automatically after installation.
+
+To access them: **Apps → Cisco Secure Access App for Splunk**
+
+**Prerequisites for dashboards to show data:**
+
+1. Org account must be created (Step 2) so the app has a valid API connection.
+2. App settings must be configured for dashboard readiness (Step 3), including
+   terms acceptance and optional role bootstrap.
+3. The required add-on must be installed so event-log ingestion and log-index
+   settings are present.
+4. Modular inputs must be running and delivering events to the configured indexes
+   (`investigate_index`, `privateapp_index`, `appdiscovery_index`, and the
+   Secure Access event indexes configured in the add-on).
+
+The `--apply-dashboard-defaults` flag in Step 3 initializes the app's stored
+dashboard settings (refresh rate, Cloudlock, destination lists, S3 index
+wiring) so the UI starts in a consistent state rather than falling back to
+defaults on first load.
+
+On **Splunk Cloud**, dashboards are available immediately after ACS installs
+the app. All post-install configuration (account creation, settings) runs over
+search-tier REST.
+
+## What This Automation Covers
+
+The current skill automates:
+
+- OAuth/org account creation and update
+- required add-on and app installation
+- investigate index registration
+- private app index registration
+- app discovery index registration
+- automatic creation or update of the corresponding modular inputs
+- app bootstrap steps such as terms acceptance and optional role creation
+- dashboard settings, destination lists, Cloudlock settings, and S3-backed
+  dashboard index wiring
+
+## Key Learnings / Known Issues
+
+1. **Custom API surface**: This app stores configuration through custom REST
+   endpoints and KV store records rather than simple static conf edits.
+2. **Core account fields move together**: `apiKey`, `apiSecret`, and `baseURL`
+   are treated as a credential set.
+3. **Org-aware indexes**: `privateapp_index` and `appdiscovery_index` create
+   or update matching modular inputs for the same organization.
+4. **Terms gate the UI**: The app UI stores a TOC acceptance record before some
+   settings views become available.
+5. **Dashboard defaults exist in the UI**: If no dashboard interval is stored,
+   the frontend falls back to 12 hours. This skill can write those settings
+   explicitly so the app is initialized consistently.
+
+## Additional Resources
+
+- [reference.md](reference.md) — endpoint behavior and payload fields
+- [template.example](template.example) — non-secret intake worksheet
+
+## Validation Modes
+
+Run `source-repository automation (not bundled)` for diagnostics. Use `--completion` (alias `--strict`)
+to require an org/global-org configuration, dashboard views, and events in at
+least one configured org or S3-backed index using a current
+`cisco:cloud_security:*` or `cisco:secure_access:*` sourcetype. Strict mode
+rejects `--skip-data-flow` because it cannot prove completion without typed
+event evidence. See [reference.md](reference.md) for the source-backed current
+sourcetype ledger and retired-alias migration note.
+
+
+## Portability note
+
+This Cisco DevNet package preserves the source skill's operational guidance, references, templates, and assets. Source-repository `agents/openai.yaml` files and repository-coupled scripts/shared helpers are intentionally not bundled. Any omitted automation must be recreated with the target product's supported tools after read-only discovery, exact-target review, explicit approval, rollback preparation, and post-change validation. Keep secrets in local mode-0600 files and never paste them into chat, commands, or logs.
