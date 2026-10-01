@@ -1,0 +1,82 @@
+# Splunk Index Lifecycle / SmartStore Setup Worksheet
+#
+# Non-secret values only. Do not store ACS tokens, session keys, object-store
+# keys, or approval artifacts here; store only local file paths to them.
+
+deployment: cluster
+platform: enterprise
+operation: inventory
+scope: per-index
+phase: render
+
+splunk_home: /opt/splunk
+app_name: ZZZ_cisco_skills_smartstore
+stack:
+acs_base: https://admin.splunk.com
+datatype: event
+
+indexes: all
+evidence_file:
+session_key_file:
+splunk_uri: https://localhost:8089
+acs_token_file: /tmp/acs_token
+owner_approval_file:
+backup_evidence_file:
+accept_destructive_index_delete: false
+confirm_token:
+
+# Enterprise retention / local lifecycle
+max_total_data_size_mb:
+frozen_time_period_in_secs:
+
+# Splunk Cloud retention / DDAA handoff
+searchable_days:
+archival_retention_days:
+max_data_size_mb:
+
+# SmartStore
+remote_provider: s3
+volume_name: remote_store
+remote_path: s3://splunk-prod-smartstore/cluster-a
+smartstore_indexes: main,summary
+max_global_data_size_mb:
+max_global_raw_data_size_mb:
+
+cache_size_mb:
+eviction_policy:
+eviction_padding_mb:
+hotlist_recency_secs:
+hotlist_bloom_filter_recency_hours:
+index_hotlist_recency_secs:
+index_hotlist_bloom_filter_recency_hours:
+
+s3_endpoint:
+s3_auth_region:
+s3_signature_version:
+s3_supports_versioning: unset
+s3_tsidx_compression: unset
+s3_encryption: unset
+s3_kms_key_id:
+s3_kms_auth_region:
+s3_ssl_verify_server_cert: unset
+s3_ssl_versions:
+s3_access_key_file:
+s3_secret_key_file:
+
+gcs_credential_file:
+
+azure_endpoint:
+azure_container_name:
+
+bucket_localize_acquire_lock_timeout_sec:
+bucket_localize_connect_timeout_max_retries:
+bucket_localize_max_timeout_sec:
+
+clean_remote_storage_by_default: false
+apply_cluster_bundle: false
+restart_splunk: true
+
+# Secret-file helpers:
+# bash portable local helper /tmp/acs_token
+# bash portable local helper /tmp/smartstore_s3_access_key
+# bash portable local helper /tmp/smartstore_s3_secret_key

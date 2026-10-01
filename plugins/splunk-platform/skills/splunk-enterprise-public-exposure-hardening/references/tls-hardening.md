@@ -1,0 +1,126 @@
+# TLS Hardening Reference
+
+## Table of contents
+
+- [TLS 1.3](#tls-13)
+- [Defense-in-depth toggles](#defense-in-depth-toggles)
+- [Default certificate detection](#default-certificate-detection)
+- [Certificate hygiene](#certificate-hygiene)
+- [TLS scan tools](#tls-scan-tools)
+- [Post-quantum / hybrid](#post-quantum-hybrid)
+
+Splunk Enterprise's documented TLS 1.2 baseline, restricted to AEAD:
+
+```
+sslVersions = tls1.2
+cipherSuite = ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:\
+              ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256
+ecdhCurves  = prime256v1, secp384r1, secp521r1
+```
+
+Splunk's published list also contains four non-AEAD suites
+(`ECDHE-ECDSA-AES256-SHA384`, `ECDHE-RSA-AES256-SHA384`,
+`ECDHE-ECDSA-AES128-SHA256`, `ECDHE-RSA-AES128-SHA256`). These are CBC
+mode — the suite name does not say so, but `openssl ciphers -v` reports
+`Enc=AES(n)` with no AEAD token. This renderer omits them: on an
+internet-exposed instance an old client is a reason to front the host
+with a proxy that terminates its own TLS, not a reason to weaken
+Splunk's listener. See
+[`splunk-platform-pki-setup/references/algorithm-presets.md`](../../splunk-platform-pki-setup/references/algorithm-presets.md)
+for the supported compatibility paths if a client truly cannot do AEAD.
+
+The renderer applies this in five places, all driven from the same source
+of truth in `source-repository automation (not bundled)`:
+
+| File | Stanza | Note |
+|---|---|---|
+| `web.conf` | `[settings]` | Splunk Web 8000 |
+| `server.conf` | `[sslConfig]` | splunkd 8089 default for all child stanzas |
+| `inputs.conf` | `[http]` (HEC) | HEC 8088 |
+| `inputs.conf` | `[splunktcp-ssl://9997]` | S2S receiver |
+| `outputs.conf` | `[tcpout-server://...]` | Heavy forwarder → indexers |
+
+## TLS 1.3
+
+`--enable-tls13 true --tls-policy tls12_13` emits `sslVersions = tls1.2,
+tls1.3`. Use only when:
+
+- Target Splunk Enterprise is 10.4 or later. The renderer rejects TLS 1.3
+  policy on older Enterprise trains.
+- The platform OpenSSL has TLS 1.3 support.
+- All inter-Splunk peers are on the same baseline (mixed-version
+  clusters can fail to negotiate).
+
+If unsure, leave at `tls12`. The Splunk-published cipher list above is
+TLS 1.2-only — with TLS 1.3 the AEAD suites are added automatically by
+OpenSSL and do not require enumeration.
+
+## Defense-in-depth toggles
+
+| Setting | Stanza | Default | Hardened | Why |
+|---|---|---|---|---|
+| `allowSslCompression` | `[sslConfig]` | `true` | `false` | CRIME mitigation |
+| `allowSslRenegotiation` | `[sslConfig]` | `true` | `false` | Where supported |
+| `sslVerifyServerCert` | `[sslConfig]` | `false` | `true` | Verifies peer cert |
+| `sslCommonNameToCheck` | `[sslConfig]` | unset | populate per peer | Prevents wildcard mis-trust |
+| `sslAltNameToCheck` | `[sslConfig]` | unset | populate per peer | SAN validation |
+| `requireClientCert` | `[sslConfig]` (10.0+) | `false` | `true` for inter-Splunk mTLS | mTLS |
+| `sendStrictTransportSecurityHeader` | `[httpServer]` | `false` | `true` | HSTS for splunkd |
+| `includeSubDomains` | `[httpServer]` | `false` | `true` after subdomain audit | HSTS scoping |
+| `preload` | `[httpServer]` | `false` | `true` after permanent commitment | HSTS preload |
+| `sslPassword` | `[sslConfig]` | `password` (literal!) | non-default via `*-secret-file` | Default is a known-bad |
+
+## Default certificate detection
+
+Splunk ships with these self-signed default certs in
+`$SPLUNK_HOME/etc/auth/`:
+
+- `server.pem` — splunkd, subject CN includes `SplunkServerDefaultCert`.
+- `cacert.pem` — root, subject CN includes `SplunkCommonCA`.
+- `splunkweb/cert.pem` — Splunk Web, subject CN includes
+  `SplunkWebDefaultCert`.
+
+The rendered `verify-certs.sh` and `preflight.sh` refuse to mark the
+deployment ready while any of these subject-CN tokens is present in the
+configured `serverCert`. Hash-based fingerprints are tracked in
+`default-cert-fingerprints.json` for additional rigor.
+
+## Certificate hygiene
+
+- Public CA (Let's Encrypt, DigiCert, Sectigo) — preferred.
+- Internal CA — acceptable only if the CA root is distributed to every
+  client of the public surface (i.e. only forwarders, not browsers).
+- Key strength: ≥ 2048-bit RSA or P-256+ ECDSA.
+- Signature algorithm: SHA-256 or stronger. SHA-1 / MD5 refused.
+- CN/SAN must include `--public-fqdn` and any other operator-supplied
+  `--required-sans`.
+- CAA records on the FQDN must allowlist the issuing CA only.
+
+## TLS scan tools
+
+The renderer's `validate.sh` does a basic openssl-driven scan. For
+deeper testing run:
+
+```bash
+testssl.sh --severity HIGH https://splunk.example.com/
+```
+
+A passing score requires:
+
+- No TLS 1.0 / TLS 1.1 negotiation.
+- No NULL / EXPORT / RC4 / 3DES / weak DH / anonymous ciphers.
+- HSTS present and valid.
+- OCSP stapling enabled at the proxy.
+- ALPN h2 negotiated.
+- Certificate chain validates against a public root.
+
+Enterprise **10.4** enforces the TLS 1.0/1.1 removal at the platform layer;
+legacy clients or upstream proxies that still offer only TLS 1.0/1.1 will fail
+handshake after upgrade even if Splunk-side `sslVersions` already targeted TLS
+1.2.
+
+## Post-quantum / hybrid
+
+Splunk Enterprise 10.4 adds platform support for post-quantum TLS. This
+renderer does not configure PQC groups: keep the TLS policy at the documented
+TLS 1.2/1.3 baseline and use the PKI workflow for a reviewed 10.4 PQC rollout.
