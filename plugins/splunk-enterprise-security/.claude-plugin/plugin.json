@@ -1,0 +1,19 @@
+{
+  "name": "splunk-enterprise-security",
+  "displayName": "Splunk Enterprise Security",
+  "description": "Operational skills for Splunk Enterprise Security, security portfolio products, and WideField integrations.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Cisco DevNet",
+    "url": "https://developer.cisco.com/"
+  },
+  "homepage": "https://github.com/CiscoDevNet/skills/tree/main/skills/splunk-enterprise-security",
+  "repository": "https://github.com/CiscoDevNet/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "splunk",
+    "splunk-enterprise-security",
+    "agent-skills",
+    "security"
+  ]
+}
