@@ -5,8 +5,10 @@ platforms, AppDynamics, Observability, and adjacent operational workflows.
 Each skill is a self-contained folder with a `SKILL.md` file that compatible
 coding agents load only when a request matches its description.
 
-The migrated catalog adds 167 skills in seven namespaces:
+The migrated catalog adds skills in the following namespaces:
 
+- `sccfm/` - Cisco Security Cloud Control Firewall Manager skills
+- `cisco-ios-patterns/` - Cisco IOS and IOS XE skills
 - `splunk-platform/` — Splunk Platform, Cloud Platform, Enterprise, collectors,
   applications, Cisco integrations, and data-source add-ons (87).
 - `splunk-observability-cloud/` — Splunk Observability Cloud, Galileo, Lemonade,
