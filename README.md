@@ -25,6 +25,8 @@ The existing Cisco namespaces remain available alongside the migrated catalog.
 The migration manifest and source attribution are recorded in
 [`MIGRATION_MANIFEST.json`](MIGRATION_MANIFEST.json) and [`SOURCES.md`](SOURCES.md).
 
+You can check the skills installation and usage process in this video: [https://youtu.be/cvwnvjARp7w](https://youtu.be/cvwnvjARp7w)
+
 ## Installation
 
 The remote for this project is
